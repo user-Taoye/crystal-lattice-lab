@@ -1,0 +1,3086 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="交互式七大晶系与十四种布拉维格子三维建模工具">
+  <title>晶格实验室</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #14253a;
+      --muted: #586c83;
+      --blue: #124fcb;
+      --line: #dce5ef;
+      --paper: #fff;
+      --page: #f3f6fa;
+      --mono: "Cascadia Mono", Consolas, monospace;
+      font-family: "Inter", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--page);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled, input:disabled { cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible, a:focus-visible {
+      outline: 2px solid #1556dc;
+      outline-offset: 3px;
+    }
+    a { color: var(--blue); }
+    [hidden] { display: none !important; }
+    .frame { width: min(1500px, 100%); margin: auto; padding-inline: clamp(12px, 2.5vw, 38px); }
+    .masthead { background: #fff; border-bottom: 1px solid var(--line); }
+    .masthead .frame { min-height: 86px; display: flex; align-items: center; gap: 16px; }
+    .brand-mark {
+      width: 43px; height: 43px; flex: 0 0 auto; border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(150deg, #306ff4, #154bc9);
+      box-shadow: 0 4px 10px #1555cc24;
+    }
+    .brand-mark span {
+      width: 17px; height: 17px; border: 1.5px solid #fff;
+      transform: rotate(30deg) skew(-8deg); border-radius: 2px;
+      box-shadow: 4px -4px 0 -2.5px #a5d6ff, -4px 4px 0 -2.5px #a5d6ff;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(19px, 2vw, 26px); font-weight: 750; letter-spacing: -.035em; }
+    .mast-meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .mast-meta b { font: 700 14px var(--mono); color: var(--ink); }
+    .mast-meta i { font-style: normal; color: #a9bbd1; margin-inline: 8px; }
+    .workspace { display: grid; grid-template-columns: 218px minmax(0, 1fr) 308px; gap: 16px; align-items: start; padding-block: 22px 17px; }
+    .card { border: 1px solid var(--line); border-radius: 17px; background: var(--paper); box-shadow: 0 3px 12px #203a5f06; min-width: 0; }
+    .card-heading { padding: 17px 17px 13px; border-bottom: 1px solid #e9eef5; }
+    .card-heading h2 { font-size: 16px; font-weight: 750; }
+    .card-heading p { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .catalog { padding: 4px 11px 11px; }
+    .family { padding: 9px 6px 8px; }
+    .family + .family { border-top: 1px solid #eef2f7; }
+    .family h3 { color: #4d6079; font-size: 12px; font-weight: 700; margin: 0 0 6px 3px; white-space: nowrap; }
+    .family-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+    .lattice-button {
+      height: 34px; padding: 0 5px; display: flex; align-items: center; gap: 4px;
+      background: #f6f8fc; border: 1px solid transparent; border-radius: 7px;
+      color: #354960; font-size: 11px; white-space: nowrap;
+    }
+    .lattice-button:hover { border-color: #b3c9ed; background: #eef4fd; }
+    .lattice-button[aria-pressed="true"] { border-color: #a8c3fd; background: #e9f1ff; color: #1248b6; font-weight: 750; }
+    .lattice-button b { font: 700 11px var(--mono); min-width: 26px; text-align: center; padding: 3px 2px; border-radius: 4px; background: #e7edf6; color: #324b6a; }
+    .lattice-button[aria-pressed="true"] b { color: #fff; background: var(--blue); }
+    .catalog-note { color: var(--muted); padding: 10px 16px 13px; border-top: 1px solid #e9eef5; font-size: 10px; line-height: 1.65; }
+    .scene { overflow: hidden; }
+    .scene-heading { padding: 17px 19px 15px; display: flex; gap: 12px; justify-content: space-between; align-items: center; min-height: 89px; }
+    .scene-heading h2 { display: flex; gap: 9px; align-items: center; font-size: clamp(19px, 2vw, 24px); font-weight: 750; letter-spacing: -.035em; }
+    .code {
+      color: #1552c8; background: #eaf1ff; border: 1px solid #d7e5ff;
+      font: 700 12px var(--mono); border-radius: 6px; letter-spacing: 0; padding: 5px 7px;
+    }
+    .model-detail { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .view-button, .text-button, .toolbar button {
+      border: 1px solid #d7e2ef; background: #fff; color: #354d6a; border-radius: 7px;
+      min-height: 30px; padding: 4px 9px; font-size: 11px; white-space: nowrap;
+    }
+    .view-button:hover, .text-button:hover, .toolbar button:hover { color: var(--blue); background: #f0f5ff; border-color: #acc6f4; }
+    .viewport {
+      height: clamp(370px, calc(100svh - 385px), 715px);
+      position: relative; overflow: hidden; isolation: isolate; border-block: 1px solid #dce8f6;
+      background-color: #eef4fd;
+      background-image:
+        radial-gradient(ellipse at center, #fbfdffb8 1%, #e6effb36 75%),
+        linear-gradient(#7e9fcb21 1px, transparent 1px),
+        linear-gradient(90deg, #7e9fcb21 1px, transparent 1px);
+      background-size: 100% 100%, 25px 25px, 25px 25px;
+      background-position: center;
+    }
+    #model { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; outline-offset: -4px; }
+    #model.dragging { cursor: grabbing; }
+    .viewport-top {
+      position: absolute; inset: 12px 13px auto; display: flex; justify-content: space-between;
+      align-items: center; gap: 8px; pointer-events: none;
+    }
+    .view-label {
+      display: flex; align-items: center; gap: 7px; border-radius: 6px; padding: 5px 8px;
+      font-size: 10px; font-weight: 650; color: #33537a; background: #f8fbffdd;
+      border: 1px solid #dce7f5; white-space: nowrap;
+    }
+    .view-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #276bea; box-shadow: 0 0 0 2px #dce9ff; }
+    .viewport-top button { pointer-events: auto; }
+    .legend {
+      position: absolute; right: 12px; bottom: 12px; display: flex; gap: 11px; align-items: center;
+      font-size: 10px; color: #395772; border-radius: 7px; padding: 7px 8px;
+      background: #f8fbffeb; border: 1px solid #dce7f5; pointer-events: none;
+    }
+    .legend span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .legend i { width: 8px; height: 8px; border-radius: 100%; background: #2870e3; }
+    .legend .center-dot { background: #da8a18; }
+    .point-tip {
+      position: absolute; pointer-events: none; padding: 7px 9px; border-radius: 6px;
+      color: #fff; font-size: 11px; line-height: 1.65; background: #182c48f5; box-shadow: 0 4px 16px #203c5d33;
+    }
+    .point-tip code { font: 12px var(--mono); }
+    .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 12px 14px 9px; }
+    .toolbar .axis-button { min-width: 43px; }
+    .toolbar button[aria-pressed="true"] { color: #1248b6; background: #e9f1ff; border-color: #a8c3fd; }
+    .toolbar .reset { margin-left: auto; }
+    .gestures { padding: 0 14px 12px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .stats { display: grid; grid-template-columns: 1.2fr 1fr 1fr; border-top: 1px solid var(--line); background: #fafcff; margin: 0; }
+    .stats div { padding: 12px 13px 13px; min-width: 0; }
+    .stats div + div { border-left: 1px solid var(--line); }
+    .stats dt { font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .stats dd { margin: 5px 0 0; font: 700 clamp(14px, 1.75vw, 20px) var(--mono); color: #193776; overflow-wrap: anywhere; }
+    .stats small { font: 500 11px system-ui, sans-serif; color: var(--muted); }
+    .settings .card-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-bottom: 15px; }
+    .settings-section { padding: 13px 15px; }
+    .settings-section + .settings-section { border-top: 1px solid #e9eef5; }
+    .section-title { font-size: 13px; font-weight: 750; margin-bottom: 8px; }
+    .section-title small { margin-left: 5px; font: 500 10px var(--mono); color: var(--muted); }
+    .mode { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 8px; background: #eef2f8; }
+    .mode button {
+      border: 1px solid transparent; background: none; border-radius: 6px; color: #4d6079;
+      font-size: 11px; font-weight: 650; white-space: nowrap; min-height: 27px; padding: 2px 3px;
+    }
+    .mode button[aria-pressed="true"] { background: #fff; color: #164bb8; border-color: #dee7f5; box-shadow: 0 1px 3px #31476c12; }
+    .mode button:hover { color: var(--blue); }
+    .constraint { min-height: 29px; padding-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .setting-select { color: #304b6e; width: 100%; border: 1px solid #d7e2ef; border-radius: 7px; padding: 5px 7px; background: #fff; font-size: 11px; margin-top: 7px; }
+    .rh-setting { display: block; font-size: 10px; color: var(--muted); margin-top: 6px; }
+    .parameters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 7px; margin-top: 9px; }
+    .parameter { min-width: 0; }
+    .parameter label { display: flex; align-items: baseline; gap: 3px; margin-bottom: 5px; font-size: 10px; color: var(--muted); }
+    .parameter label b { color: #19375c; font: 700 13px var(--mono); }
+    .parameter label small { margin-left: auto; color: #647890; font-size: 9px; white-space: nowrap; }
+    .parameter input[type="number"], .repeat-control input {
+      display: block; width: 100%; min-width: 0; border: 1px solid #cedbed; background: #fff;
+      color: #172f51; border-radius: 6px; padding: 5px; font: 600 12px var(--mono); height: 29px;
+    }
+    .parameter input[type="number"] { appearance: textfield; }
+    .parameter input[type="number"]::-webkit-inner-spin-button { appearance: none; }
+    .parameter input:disabled { background: #f1f4f9; color: #60748d; border-color: #e3eaf3; opacity: 1; }
+    .parameter input[aria-invalid="true"] { border-color: #d34a3a; }
+    .parameter input[type="range"] { width: 100%; margin: 5px 0 0; height: 12px; display: block; accent-color: #2264df; cursor: ew-resize; }
+    .parameter input[type="range"]:disabled { opacity: .47; cursor: default; }
+    .error { margin-top: 8px; color: #a62c21; font-size: 11px; line-height: 1.6; }
+    .repeat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    .repeat-control { display: flex; gap: 4px; align-items: center; min-width: 0; font: 700 11px var(--mono); }
+    .repeat-control input { font-size: 11px; height: 27px; padding-inline: 4px; }
+    .display-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 5px; }
+    .display-grid label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #344e6c; white-space: nowrap; }
+    .display-grid input { width: 14px; height: 14px; margin: 0; accent-color: #2264df; }
+    .site-footer { display: flex; flex-wrap: wrap; gap: 5px 15px; padding-bottom: 18px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .site-footer a { margin-left: auto; }
+    .symmetry-toggle {
+      background: #eaf1ff; border: 1px solid #c5d8fb; border-radius: 8px; color: #174ebd;
+      font-size: 12px; font-weight: 700; padding: 7px 10px; white-space: nowrap;
+    }
+    .symmetry-toggle:hover { background: #deebff; border-color: #a8c3fd; }
+    .symmetry-toggle[aria-pressed="true"], .timeline .play { background: #5d3ec2; border-color: #5d3ec2; color: #fff; }
+    .scene.symmetry-active .viewport { height: clamp(350px, calc(100svh - 435px), 670px); }
+    .symmetry-active .viewport .view-label::before { background: #7854d7; box-shadow: 0 0 0 2px #e8dfff; }
+    .symmetry-legend .original-dot { background: #7a96ba; }
+    .symmetry-legend .transformed-dot { background: #7854d7; }
+    .view-context { display: flex; align-items: center; gap: 5px; }
+    .element-view-label { color: #5738a0; background: #f7f2ffeb; border-color: #e5d9f6; }
+    .element-view-label::before { display: none; }
+    .view-tools { display: flex; align-items: center; gap: 5px; }
+    .symmetry-jump { display: none; align-items: center; text-decoration: none; pointer-events: auto; }
+    .scene-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; flex: 0 0 auto; }
+    .edit-toggle { background: #e5f5f1; border-color: #add8cf; color: #126a60; }
+    .edit-toggle:hover { background: #d7eee9; border-color: #8dc8bb; }
+    .edit-toggle[aria-pressed="true"] { background: #086d61; border-color: #086d61; color: #fff; }
+    .edit-active .view-label::before { background: #158376; box-shadow: 0 0 0 2px #d2efe8; }
+    .edit-active #model.node-hover { cursor: move; }
+    .edit-active #model.pin-hover { cursor: crosshair; }
+    .edit-active #model.node-dragging { cursor: move; }
+    .edit-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: #f0faf8; border-bottom: 1px solid #d4e8e4; padding: 9px 14px; }
+    .edit-toolbar button[aria-pressed="true"] { border-color: #8cc6ba; background: #dcefe9; color: #0b6157; font-weight: 700; }
+    .edit-legend .move-dot { background: #138276; }
+    .edit-legend .pin-dot { background: #9e431f; }
+    .edit-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+    .edit-counts div { border: 1px solid #d9ede8; border-radius: 8px; background: #f5fbf9; padding: 8px 6px; }
+    .edit-counts dt { color: var(--muted); font-size: 10px; }
+    .edit-counts dd { margin: 3px 0 0; font: 750 17px var(--mono); color: #126a60; }
+    .edit-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .edit-actions button:disabled, #edit-reset:disabled { opacity: .54; pointer-events: none; }
+    .edit-help { margin-top: 9px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .workspace-tabs { margin-left: auto; display: flex; gap: 5px; }
+    .workspace-tabs .view-button[aria-pressed="true"] { color: #174ebd; background: #eaf1ff; border-color: #b5ccf5; font-weight: 700; }
+    .masthead .workspace-tabs + .mast-meta { margin-left: 8px; }
+    .system-catalog { display: grid; gap: 5px; padding: 10px 11px; }
+    .system-entry {
+      width: 100%; min-height: 47px; padding: 7px 8px; display: grid; gap: 4px; text-align: left;
+      color: #354960; background: #f6f8fc; border: 1px solid transparent; border-radius: 7px;
+    }
+    .system-entry strong { font-size: 12px; }
+    .system-entry small { color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .system-entry:hover { border-color: #b3c9ed; background: #eef4fd; }
+    .system-entry[aria-pressed="true"] { border-color: #a8c3fd; background: #e9f1ff; color: #1248b6; }
+    .group-filters { display: grid; gap: 7px; padding: 11px; border-bottom: 1px solid #e9eef5; }
+    .group-filters .setting-select { margin-top: 0; }
+    .group-search {
+      width: 100%; min-width: 0; border: 1px solid #d7e2ef; border-radius: 7px;
+      color: var(--ink); background: #fff; font-size: 12px; padding: 7px;
+    }
+    .group-list {
+      display: grid; gap: 3px; padding: 7px; max-height: clamp(258px, calc(100svh - 320px), 685px);
+      overflow: auto; scrollbar-width: thin;
+    }
+    .group-entry {
+      display: grid; grid-template-columns: minmax(29px, auto) minmax(0, 1fr); align-items: center; gap: 7px;
+      padding: 6px 6px; text-align: left; background: #fff; border: 1px solid transparent;
+      border-radius: 7px; color: #273e5a; font-size: 12px; min-height: 34px;
+    }
+    .group-entry:hover { background: #f4f7fd; border-color: #d9e5f9; }
+    .group-entry[aria-pressed="true"] { background: #eaf1ff; border-color: #bad0f9; color: #174ebd; }
+    .group-entry b { font: 650 10px var(--mono); color: #5a6f8a; }
+    .group-entry span { font-weight: 650; overflow-wrap: anywhere; }
+    .group-list-count { padding: 7px 11px; font-size: 10px; color: var(--muted); border-top: 1px solid #e9eef5; }
+    .group-active .viewport { height: clamp(350px, calc(100svh - 435px), 670px); }
+    .group-legend .orbit-dot { background: #6650b0; }
+    .group-legend .seed-dot { background: #0f7c73; }
+    .group-legend .target-dot { background: #bc6d20; }
+    .group-metadata { display: grid; gap: 6px; font-size: 11px; color: var(--muted); margin: 0; }
+    .group-metadata div { display: grid; grid-template-columns: 77px 1fr; gap: 8px; align-items: baseline; }
+    .group-metadata dd { margin: 0; font: 650 12px var(--mono); color: #294268; overflow-wrap: anywhere; }
+    .group-link { margin-top: 9px; }
+    .group-operation select { font-family: var(--mono); }
+    .group-operation-output { display: block; margin-block: 4px; font: 700 12px var(--mono); overflow-wrap: anywhere; }
+    .group-option { display: block; font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .group-option input { vertical-align: middle; accent-color: #6947c9; margin-left: 0; }
+    .timeline {
+      display: grid; grid-template-columns: auto minmax(40px, 1fr) 39px auto;
+      gap: 9px; align-items: center; padding: 10px 14px; background: #faf8ff; border-bottom: 1px solid #e5def2;
+    }
+    .timeline button { min-height: 31px; }
+    .timeline input { width: 100%; min-width: 0; accent-color: #6947c9; margin: 0; cursor: ew-resize; }
+    .timeline output { text-align: right; color: #583c91; font: 700 11px var(--mono); }
+    .symmetry-panel .setting-select { margin: 5px 0 0; font-size: 12px; }
+    .symmetry-fields { display: grid; gap: 10px; }
+    .symmetry-fields label, .symmetry-field-title { color: #344e6c; font-size: 11px; font-weight: 700; }
+    .symmetry-step { display: grid; gap: 5px; }
+    .symmetry-choices { display: flex; flex-wrap: wrap; gap: 5px; }
+    .symmetry-choice {
+      background: #faf8ff; border: 1px solid #e2d8f4; color: #4a386d; border-radius: 6px;
+      min-height: 29px; padding: 4px 7px; font: 650 11px var(--mono);
+    }
+    .symmetry-choice:hover { background: #ebe1ff; border-color: #a58ae1; }
+    .symmetry-choice[aria-pressed="true"] { background: #eee6ff; color: #4e2c9e; border-color: #a185e0; }
+    .symmetry-choice b { color: #663cc0; margin-right: 4px; }
+    .symmetry-markers { position: absolute; inset: 0; pointer-events: none; }
+    .element-marker {
+      position: absolute; translate: -50% -50%; pointer-events: auto; border-radius: 6px;
+      min-width: 26px; height: 22px; padding: 1px 4px; background: #f4f3f9e8;
+      border: 1px solid #8874ad66; color: #645775;
+      font: 650 11px var(--mono); text-align: center; white-space: nowrap;
+    }
+    .element-marker:hover, .element-marker:focus-visible { background: #ece5fb; border-color: #9274ce; color: #4c2a8b; }
+    .element-marker[aria-pressed="true"] {
+      background: #532fb6; border-color: #fff; color: #fff; z-index: 1; scale: 1.1;
+      box-shadow: 0 0 0 1px #532fb6, 0 2px 6px #452c802e; font-weight: 750;
+    }
+    .probe-handle {
+      position: absolute; translate: -50% -50%; z-index: 2; width: 26px; height: 26px;
+      display: grid; place-items: center; padding: 0; border: 2px solid #fff; border-radius: 50%;
+      background: #0c756d; color: #fff; box-shadow: 0 0 0 1px #096960, 0 2px 7px #01665b38;
+      font: 750 12px var(--mono); cursor: grab; touch-action: none;
+    }
+    .probe-handle:hover, .probe-handle.dragging { background: #075c54; }
+    .probe-handle.dragging { cursor: grabbing; }
+    .probe-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .probe-heading h3 { margin: 0; }
+    .probe-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    .probe-result { margin-top: 8px; color: #0d685e; font-size: 11px; line-height: 1.5; }
+    .probe-result code { font: 650 11px var(--mono); overflow-wrap: anywhere; }
+    .symmetry-speed { display: flex; gap: 7px; align-items: center; color: #344e6c; font-size: 11px; }
+    .symmetry-panel .symmetry-speed select { width: auto; margin: 0; }
+    .operation-info { margin-top: 12px; padding: 10px; background: #f5f1fe; border: 1px solid #e9e0fb; border-radius: 8px; }
+    .operation-info strong { display: block; color: #5334a5; font-size: 12px; }
+    .operation-info p, .symmetry-note { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .symmetry-note.warning { color: #864119; }
+    .symmetry-panel .display-grid { margin-bottom: 10px; }
+    .symmetry-panel input[type="checkbox"] { accent-color: #6947c9; }
+    .symmetry-count {
+      color: #5939ae; background: #f1ebfc; border: 1px solid #e9e0fb;
+      border-radius: 6px; padding: 5px 6px; font: 700 11px var(--mono); white-space: nowrap;
+    }
+    .symmetry-match { color: #435778; font-size: 11px; line-height: 1.55; }
+    .symmetry-match strong { color: #5334a5; font: 700 13px var(--mono); }
+    #symmetry-panel, #viewport { scroll-margin-block-start: 8px; }
+    @media (max-width: 1110px) {
+      .workspace { grid-template-columns: 182px minmax(0, 1fr) 267px; gap: 10px; }
+      .lattice-button { gap: 2px; padding-inline: 2px; }
+      .lattice-button b { min-width: 23px; }
+      .catalog { padding-inline: 7px; }
+      .settings-section { padding-inline: 12px; }
+    }
+    @media (max-width: 875px) {
+      .workspace { grid-template-columns: minmax(0, 1fr) 260px; }
+      .library { grid-column: 1 / -1; }
+      .library .card-heading { padding: 9px 15px 0; border: 0; }
+      .library .card-heading h2 { font-size: 12px; }
+      .library .card-heading p { display: none; }
+      .catalog { display: flex; overflow-x: auto; padding: 7px 8px; scrollbar-width: thin; }
+      .family { flex: 0 0 auto; padding: 4px 8px; }
+      .family + .family { border-top: 0; border-left: 1px solid #e9eef5; }
+      .family-options { display: flex; }
+      .lattice-button { padding-inline: 5px; }
+      .catalog-note { display: none; }
+      .group-library { grid-column: 1 / -1; }
+      .group-library .card-heading { display: none; }
+      .group-filters { grid-template-columns: minmax(140px, 1fr) minmax(120px, 1fr) minmax(115px, .75fr); }
+      .group-list { display: flex; max-height: none; overflow-x: auto; }
+      .group-entry { white-space: nowrap; flex-shrink: 0; min-height: 36px; }
+      .system-catalog { display: flex; overflow-x: auto; scrollbar-width: thin; }
+      .system-entry { width: auto; min-height: 35px; flex: 0 0 auto; white-space: nowrap; }
+      .system-entry small { display: none; }
+    }
+    @media (max-width: 625px) {
+      .masthead .frame { min-height: 69px; gap: 10px; }
+      .brand-mark { width: 35px; height: 35px; }
+      .mast-meta { display: none; }
+      .workspace { grid-template-columns: minmax(0, 1fr); padding-block: 10px; }
+      .scene-heading { min-height: 70px; padding: 12px 13px; }
+      .viewport { height: clamp(340px, 53svh, 510px); }
+      .scene.symmetry-active .viewport { height: clamp(270px, 39svh, 390px); }
+      .scene.symmetry-active #view-label { display: none; }
+      .symmetry-toggle { font-size: 11px; padding-inline: 7px; }
+      .scene-actions { flex: 0 1 auto; }
+      .scene.edit-active .viewport { height: clamp(270px, 43svh, 390px); }
+      .scene.group-active .viewport { height: clamp(270px, 44svh, 410px); }
+      .group-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .group-filters .mode { grid-column: 1 / -1; }
+      .workspace-tabs { gap: 3px; }
+      .workspace-tabs .view-button { padding-inline: 5px; }
+      .group-metadata div { grid-template-columns: 89px 1fr; }
+      .scene.symmetry-active .symmetry-jump, .symmetry-panel .symmetry-jump { display: inline-flex; }
+      .scene.group-active .group-jump { display: inline-flex; }
+      .settings-section { padding-inline: 15px; }
+    }
+    @media (max-width: 350px) {
+      .masthead .frame { flex-wrap: wrap; row-gap: 7px; padding-block: 9px; }
+      .workspace-tabs { flex-basis: 100%; margin-left: 0; }
+      .workspace-tabs .view-button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="frame">
+      <div class="brand-mark" aria-hidden="true"><span></span></div>
+      <h1>晶格实验室</h1>
+      <nav class="workspace-tabs" aria-label="模型类别">
+        <button type="button" class="view-button" id="system-workspace" aria-controls="system-library" aria-pressed="false">晶系</button>
+        <button type="button" class="view-button" id="lattice-workspace" aria-controls="lattice-library" aria-pressed="true">布拉维格子</button>
+        <button type="button" class="view-button" id="group-workspace" aria-controls="group-library" aria-pressed="false">晶体结构</button>
+      </nav>
+      <p class="mast-meta"><b>7</b> 个晶系 <i>／</i> <b>14</b> 种格子</p>
+    </div>
+  </header>
+
+  <main class="frame workspace">
+    <nav class="card library" id="system-library" aria-label="七大晶系" hidden>
+      <div class="card-heading"><h2>选择晶系</h2><p>比较代表晶胞的形状与参数约束</p></div>
+      <div class="system-catalog" id="system-catalog"></div>
+    </nav>
+    <nav class="card library" id="lattice-library" aria-label="布拉维格子列表">
+      <div class="card-heading"><h2>选择布拉维格子</h2><p>按晶系分组</p></div>
+      <div id="catalog" class="catalog"></div>
+      <p class="catalog-note">单斜与正交的底心设置用 C 表示，也可见 mS、oS 的写法。</p>
+    </nav>
+    <nav class="card group-library" id="group-library" aria-label="晶体结构目录" hidden>
+      <div class="card-heading"><h2>选择晶体结构</h2></div>
+      <div class="group-filters">
+        <div class="mode" role="group" aria-label="选择对称群类别">
+          <button type="button" data-group-mode="point" aria-pressed="false">点群 32</button>
+          <button type="button" data-group-mode="space" aria-pressed="true">空间群 230</button>
+        </div>
+        <input class="group-search" type="search" id="group-search" aria-label="搜索编号或符号" placeholder="搜索编号或符号">
+        <select class="setting-select" id="group-system-filter" aria-label="按晶系筛选"><option value="">全部晶系</option></select>
+      </div>
+      <div class="group-list" id="group-list"></div>
+      <p class="group-list-count" id="group-list-count" role="status"></p>
+    </nav>
+
+    <section class="card scene" id="scene" aria-labelledby="model-name">
+      <div class="scene-heading">
+        <div>
+          <h2><span id="model-code" class="code"></span><span id="model-name"></span></h2>
+          <p class="model-detail" id="model-detail"></p>
+        </div>
+        <div class="scene-actions" id="lattice-actions">
+          <button type="button" class="symmetry-toggle edit-toggle" id="edit-toggle" aria-controls="edit-panel" aria-pressed="false">拖点变形</button>
+          <button type="button" class="symmetry-toggle" id="symmetry-toggle" aria-controls="symmetry-panel" aria-pressed="false">点对称演示</button>
+        </div>
+      </div>
+      <div class="viewport" id="viewport">
+        <canvas id="model" tabindex="0" aria-label="交互式三维晶格模型" aria-describedby="gestures"></canvas>
+        <div id="symmetry-markers" class="symmetry-markers" role="group" aria-label="视窗中的操作素" hidden></div>
+        <button type="button" class="probe-handle" id="probe-handle" aria-label="拖动或用方向键移动示踪点 P" title="拖动 P 改变位置" hidden>P</button>
+        <div class="viewport-top">
+          <div class="view-context">
+            <span class="view-label" id="view-label">斜视</span>
+            <span class="view-label element-view-label" id="element-view-label" hidden></span>
+          </div>
+          <div class="view-tools">
+            <a class="view-button symmetry-jump" href="#symmetry-panel">选操作 ↓</a>
+            <a class="view-button symmetry-jump group-jump" id="group-jump" href="#group-panel" hidden>选操作 ↓</a>
+            <button type="button" id="projection" class="view-button" title="切换正交与透视投影">正交投影</button>
+          </div>
+        </div>
+        <div class="legend" id="legend">
+          <span><i></i>顶点</span><span id="center-legend"><i class="center-dot"></i><span id="center-label">面心</span></span>
+        </div>
+        <div class="legend symmetry-legend" id="symmetry-legend" hidden>
+          <span id="original-key"><i class="original-dot"></i>原始晶胞</span>
+          <span><i class="transformed-dot"></i>变换后的晶胞</span>
+        </div>
+        <div class="legend edit-legend" id="edit-legend" hidden>
+          <span><i class="move-dot"></i>选中点</span><span><i class="pin-dot"></i>固定点</span>
+        </div>
+        <div class="legend group-legend" id="group-legend" hidden>
+          <span><i class="seed-dot"></i>基点</span><span><i class="orbit-dot"></i>等价位置</span><span><i class="target-dot"></i>所选终点</span>
+        </div>
+        <div class="point-tip" id="point-tip" hidden></div>
+      </div>
+      <div class="edit-toolbar" id="edit-toolbar" role="group" aria-label="格点编辑工具" hidden>
+        <button type="button" class="text-button" id="edit-move" aria-pressed="true">选择与拖动</button>
+        <button type="button" class="text-button" id="edit-pin" aria-pressed="false">固定与解锁</button>
+        <button type="button" class="text-button" id="edit-multi" aria-pressed="false">多选</button>
+        <button type="button" class="text-button" id="edit-pin-selection" disabled>固定所选</button>
+      </div>
+      <div class="timeline" id="symmetry-timeline" role="group" aria-label="点对称动画" hidden>
+        <button type="button" class="text-button play" id="symmetry-play">播放演示</button>
+        <input type="range" id="symmetry-progress" min="0" max="100" value="0" aria-label="动画进度">
+        <output id="symmetry-percent" for="symmetry-progress" aria-live="off">0%</output>
+        <button type="button" class="text-button" id="symmetry-rewind">回到起点</button>
+      </div>
+      <div class="timeline" id="group-timeline" role="group" aria-label="群操作动画" hidden>
+        <button type="button" class="text-button play" id="group-play">播放操作</button>
+        <input type="range" id="group-progress" min="0" max="100" value="0" aria-label="群操作动画进度">
+        <output id="group-percent" for="group-progress" aria-live="off">0%</output>
+        <button type="button" class="text-button" id="group-rewind">回到起点</button>
+      </div>
+      <div class="toolbar" role="group" aria-label="观察方向与旋转">
+        <button type="button" class="axis-button" data-axis="0" aria-pressed="false">沿 a</button>
+        <button type="button" class="axis-button" data-axis="1" aria-pressed="false">沿 b</button>
+        <button type="button" class="axis-button" data-axis="2" aria-pressed="false">沿 c</button>
+        <button type="button" id="spin" aria-pressed="false">自动旋转</button>
+        <button type="button" id="reset-view" class="reset">复位视图</button>
+      </div>
+      <p class="gestures" id="gestures">拖动旋转 · 滚轮缩放 · Shift + 拖动平移 · 双指缩放和平移 · 方向键旋转</p>
+      <dl class="stats" id="lattice-stats">
+        <div><dt id="volume-label">晶胞体积</dt><dd><span id="volume"></span> <small>Å³</small></dd></div>
+        <div><dt>每晶胞等效格点</dt><dd id="effective"></dd></div>
+        <div><dt>当前显示格点</dt><dd id="visible-count"></dd></div>
+      </dl>
+      <dl class="stats" id="group-stats" hidden>
+        <div><dt id="group-order-label">一般位置重数</dt><dd id="group-order"></dd></div>
+        <div><dt>当前等价位置</dt><dd id="group-orbit-count"></dd></div>
+        <div><dt>显示范围</dt><dd id="group-extent"></dd></div>
+      </dl>
+    </section>
+
+    <aside class="card settings" id="cell-settings" aria-labelledby="settings-title">
+      <div class="card-heading">
+        <h2 id="settings-title">晶胞参数</h2>
+        <button type="button" class="text-button" id="reset-params">恢复默认</button>
+      </div>
+      <section class="settings-section" aria-label="长度与夹角">
+        <div class="mode" role="group" aria-label="参数编辑模式">
+          <button type="button" id="locked" aria-pressed="true">晶系约束</button>
+          <button type="button" id="free" aria-pressed="false">自由变形</button>
+        </div>
+        <p class="constraint" id="constraint"></p>
+        <label class="rh-setting" id="rh-setting" hidden>
+          hR 晶胞设置
+          <select class="setting-select" id="rh-cell">
+            <option value="primitive">菱方原胞</option>
+            <option value="hexagonal">六方轴晶胞</option>
+          </select>
+        </label>
+        <div class="parameters" id="parameters"></div>
+        <p class="error" id="error" role="status" hidden></p>
+      </section>
+      <section class="settings-section" aria-labelledby="repeat-title">
+        <h3 class="section-title" id="repeat-title">晶胞重复次数 <small>1–5</small></h3>
+        <div class="repeat-grid">
+          <label class="repeat-control">a <input type="number" id="repeat-a" aria-label="沿 a 重复次数" min="1" max="5" step="1" value="1"></label>
+          <label class="repeat-control">b <input type="number" id="repeat-b" aria-label="沿 b 重复次数" min="1" max="5" step="1" value="1"></label>
+          <label class="repeat-control">c <input type="number" id="repeat-c" aria-label="沿 c 重复次数" min="1" max="5" step="1" value="1"></label>
+        </div>
+      </section>
+      <section class="settings-section" aria-labelledby="display-title">
+        <h3 class="section-title" id="display-title">模型显示</h3>
+        <div class="display-grid">
+          <label><input type="checkbox" data-display="points" checked>格点</label>
+          <label><input type="checkbox" data-display="edges" checked>晶胞边框</label>
+          <label><input type="checkbox" data-display="faces" checked>半透明面</label>
+          <label><input type="checkbox" data-display="axes" checked>晶轴 a、b、c</label>
+        </div>
+      </section>
+    </aside>
+    <aside class="card settings symmetry-panel" id="symmetry-panel" aria-labelledby="symmetry-title" hidden>
+      <div class="card-heading">
+        <div><h2 id="symmetry-title">点对称操作</h2><p id="symmetry-system"></p></div>
+        <span class="symmetry-count" id="symmetry-count"></span>
+        <a class="view-button symmetry-jump" href="#viewport">看演示 ↑</a>
+      </div>
+      <section class="settings-section" aria-label="点群与操作选项">
+        <div class="symmetry-fields">
+          <label>点群 <select class="setting-select" id="point-group"></select></label>
+          <label>操作素 <select class="setting-select" id="symmetry-element"></select></label>
+          <div class="symmetry-step" id="symmetry-location">
+            <span class="symmetry-field-title" id="site-label">位置</span>
+            <div class="symmetry-choices" id="symmetry-sites" role="group" aria-labelledby="site-label"></div>
+          </div>
+          <div class="symmetry-step">
+            <span class="symmetry-field-title" id="move-label">可执行操作</span>
+            <div class="symmetry-choices" id="symmetry-operations" role="group" aria-labelledby="move-label"></div>
+          </div>
+        </div>
+        <div class="operation-info" id="operation-info">
+          <strong id="operation-name"></strong><p id="operation-description"></p>
+        </div>
+      </section>
+      <section class="settings-section" aria-labelledby="probe-title">
+        <div class="probe-heading">
+          <h3 class="section-title" id="probe-title">示踪点 P 的分数坐标</h3>
+          <button type="button" class="text-button" id="probe-reset">重置 P</button>
+        </div>
+        <div class="probe-fields">
+          <div class="parameter"><label for="probe-u"><b>u</b></label><input type="number" step="any" id="probe-u" aria-describedby="probe-help probe-error"></div>
+          <div class="parameter"><label for="probe-v"><b>v</b></label><input type="number" step="any" id="probe-v" aria-describedby="probe-help probe-error"></div>
+          <div class="parameter"><label for="probe-w"><b>w</b></label><input type="number" step="any" id="probe-w" aria-describedby="probe-help probe-error"></div>
+        </div>
+        <p class="symmetry-note" id="probe-help">坐标可超出晶胞范围。拖动 P 可在当前视图平面内移动。</p>
+        <p class="error" id="probe-error" role="status" hidden>请输入可绘制的有限坐标。</p>
+        <p class="probe-result">变换终点 P′ <code id="probe-target"></code></p>
+      </section>
+      <section class="settings-section" aria-labelledby="symmetry-display">
+        <h3 class="section-title" id="symmetry-display">播放与显示</h3>
+        <div class="display-grid">
+          <label><input type="checkbox" data-symmetry="original" checked>原始晶胞</label>
+          <label><input type="checkbox" data-symmetry="element" checked>对称元素</label>
+          <label><input type="checkbox" data-symmetry="probeVisible" checked>显示示踪点 P</label>
+          <label><input type="checkbox" data-symmetry="loop">循环播放</label>
+        </div>
+        <label class="symmetry-speed">播放速度
+          <select class="setting-select" id="symmetry-speed">
+            <option value=".5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+          </select>
+        </label>
+        <p class="symmetry-match">变换后匹配参考周期格点 <strong id="symmetry-match"></strong></p>
+        <p class="symmetry-note" id="symmetry-pivot"></p>
+        <p class="symmetry-note" id="symmetry-note"></p>
+      </section>
+    </aside>
+    <aside class="card settings" id="edit-panel" aria-labelledby="edit-title" hidden>
+      <div class="card-heading">
+        <h2 id="edit-title">拖点变形</h2>
+        <button type="button" class="text-button" id="edit-reset" disabled>恢复全部点位</button>
+      </div>
+      <section class="settings-section" aria-label="格点编辑状态">
+        <dl class="edit-counts">
+          <div><dt>已选中</dt><dd id="edit-selected">0</dd></div>
+          <div><dt>已固定</dt><dd id="edit-fixed">0</dd></div>
+          <div><dt>已移动</dt><dd id="edit-moved">0</dd></div>
+        </dl>
+        <div class="edit-actions">
+          <button type="button" class="text-button" id="edit-reset-selection" disabled>恢复所选点</button>
+          <button type="button" class="text-button" id="edit-clear-selection" disabled>取消选择</button>
+          <button type="button" class="text-button" id="edit-unpin" disabled>解除全部固定</button>
+        </div>
+        <p class="edit-help" id="edit-help">拖动单个格点，或开启「多选」后逐个点击，再拖动任一选中点。拖动沿当前视图平面进行。</p>
+        <p class="edit-help">移动格点会造成局部变形。晶系分类和参数仍以选定的参考晶胞为准。</p>
+      </section>
+    </aside>
+    <aside class="card settings symmetry-panel" id="group-panel" aria-labelledby="group-heading" hidden>
+      <div class="card-heading">
+        <div><h2 id="group-heading">空间群</h2><p id="group-panel-detail"></p></div>
+        <a class="view-button symmetry-jump group-jump" href="#viewport">看演示 ↑</a>
+      </div>
+      <section class="settings-section" aria-label="对称群信息">
+        <dl class="group-metadata" id="group-metadata"></dl>
+        <button type="button" class="text-button group-link" id="group-open-point">查看对应点群</button>
+      </section>
+      <section class="settings-section" aria-label="对称操作">
+        <div class="symmetry-fields group-operation">
+          <label>操作类型 <select class="setting-select" id="group-operation-type"></select></label>
+          <label>对称操作 <select class="setting-select" id="group-operation"></select></label>
+        </div>
+        <div class="operation-info">
+          <strong id="group-operation-name"></strong>
+          <code class="group-operation-output" id="group-operation-expression"></code>
+          <p id="group-operation-description"></p>
+        </div>
+      </section>
+      <section class="settings-section" aria-labelledby="group-seed-title">
+        <div class="probe-heading">
+          <h3 class="section-title" id="group-seed-title">基点的分数坐标</h3>
+          <button type="button" class="text-button" id="group-seed-reset">恢复默认</button>
+        </div>
+        <div class="probe-fields">
+          <div class="parameter"><label for="group-x"><b>x</b></label><input type="number" step="any" id="group-x"></div>
+          <div class="parameter"><label for="group-y"><b>y</b></label><input type="number" step="any" id="group-y"></div>
+          <div class="parameter"><label for="group-z"><b>z</b></label><input type="number" step="any" id="group-z"></div>
+        </div>
+        <p class="error" id="group-seed-error" role="status" hidden>请输入有效的有限坐标。</p>
+        <p class="probe-result"><span id="group-seed-output-label"></span> <code id="group-seed-target"></code></p>
+        <label class="group-option" id="group-repeat-label"><input type="checkbox" id="group-repeat">显示 2×2×2 晶胞</label>
+        <p class="symmetry-note" id="group-orbit-note"></p>
+      </section>
+    </aside>
+  </main>
+  <footer class="frame site-footer">
+    <span>夹角定义　α = ∠(b, c)　β = ∠(c, a)　γ = ∠(a, b)</span>
+    <a href="https://journals.iucr.org/j/issues/2010/05/02/kk5061/index.html#SEC3" target="_blank" rel="noreferrer">IUCr 晶体学参考</a>
+    <a href="https://www.cryst.ehu.es/rep/point" target="_blank" rel="noreferrer">32 种晶体点群表</a>
+    <a href="https://github.com/spglib/spglib/tree/v2.6.0" target="_blank" rel="noreferrer">spglib 空间群数据</a>
+  </footer>
+  <noscript>请在浏览器中启用 JavaScript 以操作三维模型。</noscript>
+
+<!--
+Space-group operations adapted from spglib v2.6.0 (src/spg_database.c).
+Copyright (C) 2010 Atsushi Togo
+Copyright (c) 2024, Spglib team
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+* Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+* Neither the name of the <organization> nor the
+  names of its contributors may be used to endorse or promote products
+  derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT
+HOLDER> BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<script type="application/json" id="space-group-data">
+[[1,"P 1","P 1","P1",1,"P 1","",0,[16484]],[2,"P -1","P -1","P-1",2,"-P 1","",1,[16484,3198]],[3,"P 2","P 1 2 1","P2",3,"P 2y","b",2,[16484,3360]],[4,"P 2_1","P 1 2_1 1","P2_1",6,"P 2yb","b",2,[16484,1420536]],[5,"C 2","C 1 2 1","C2",9,"C 2y","b1",2,[16484,3360,18439772,18426648]],[6,"P m","P 1 m 1","Pm",18,"P -2y","b",3,[16484,16322]],[7,"P c","P 1 c 1","Pc",21,"P -2yc","b1",3,[16484,134420]],[8,"C m","C 1 m 1","Cm",30,"C -2y","b1",3,[16484,16322,18439772,18439610]],[9,"C c","C 1 c 1","Cc",39,"C -2yc","b1",3,[16484,134420,18439772,18557708]],[10,"P 2/m","P 1 2/m 1","P2/m",57,"-P 2y","b",4,[16484,3198,3360,16322]],[11,"P 2_1/m","P 1 2_1/m 1","P2_1/m",60,"-P 2yb","b",4,[16484,3198,1420536,1433498]],[12,"C 2/m","C 1 2/m 1","C2/m",63,"-C 2y","b1",4,[16484,3198,3360,16322,18439772,18426486,18426648,18439610]],[13,"P 2/c","P 1 2/c 1","P2/c",72,"-P 2yc","b1",4,[16484,3198,121458,134420]],[14,"P 2_1/c","P 1 2_1/c 1","P2_1/c",81,"-P 2ybc","b1",4,[16484,3198,1538634,1551596]],[15,"C 2/c","C 1 2/c 1","C2/c",90,"-C 2yc","b1",4,[16484,3198,121458,134420,18439772,18426486,18544746,18557708]],[16,"P 2 2 2","P 2 2 2","P222",108,"P 2 2","",5,[16484,3200,16320,3360]],[17,"P 2 2 2_1","P 2 2 2_1","P222_1",109,"P 2c 2","",5,[16484,121298,16320,121458]],[18,"P 2_1 2_1 2","P 2_1 2_1 2","P2_12_12",112,"P 2 2ab","",5,[16484,3200,18439608,18426648]],[19,"P 2_1 2_1 2_1","P 2_1 2_1 2_1","P2_12_12_1",115,"P 2ac 2ab","",5,[16484,17127410,18439608,1538634]],[20,"C 2 2 2_1","C 2 2 2_1","C222_1",116,"C 2c 2","",5,[16484,121298,16320,121458,18439772,18544586,18439608,18544746]],[21,"C 2 2 2","C 2 2 2","C222",119,"C 2 2","",5,[16484,3200,16320,3360,18439772,18426488,18439608,18426648]],[22,"F 2 2 2","F 2 2 2","F222",122,"F 2 2","",5,[16484,3200,16320,3360,1551758,1538474,1551594,1538634,17140694,17127410,17140530,17127570,18439772,18426488,18439608,18426648]],[23,"I 2 2 2","I 2 2 2","I222",123,"I 2 2","",5,[16484,3200,16320,3360,18557870,18544586,18557706,18544746]],[24,"I 2_1 2_1 2_1","I 2_1 2_1 2_1","I2_12_12_1",124,"I 2b 2c","",5,[16484,1420376,134418,1538634,18557870,17127410,18439608,17009472]],[25,"P m m 2","P m m 2","Pmm2",125,"P 2 -2","",6,[16484,3200,3362,16322]],[26,"P m c 2_1","P m c 2_1","Pmc2_1",128,"P 2c -2","",6,[16484,121298,3362,134420]],[27,"P c c 2","P c c 2","Pcc2",134,"P 2 -2c","",6,[16484,3200,121460,134420]],[28,"P m a 2","P m a 2","Pma2",137,"P 2 -2a","",6,[16484,3200,17009474,17022434]],[29,"P c a 2_1","P c a 2_1","Pca2_1",143,"P 2c -2ac","",6,[16484,121298,17127572,17022434]],[30,"P n c 2","P n c 2","Pnc2",149,"P 2 -2bc","",6,[16484,3200,1538636,1551596]],[31,"P m n 2_1","P m n 2_1","Pmn2_1",155,"P 2ac -2","",6,[16484,17127410,3362,17140532]],[32,"P b a 2","P b a 2","Pba2",161,"P 2 -2ab","",6,[16484,3200,18426650,18439610]],[33,"P n a 2_1","P n a 2_1","Pna2_1",164,"P 2c -2n","",6,[16484,121298,18544748,18439610]],[34,"P n n 2","P n n 2","Pnn2",170,"P 2 -2n","",6,[16484,3200,18544748,18557708]],[35,"C m m 2","C m m 2","Cmm2",173,"C 2 -2","",6,[16484,3200,3362,16322,18439772,18426488,18426650,18439610]],[36,"C m c 2_1","C m c 2_1","Cmc2_1",176,"C 2c -2","",6,[16484,121298,3362,134420,18439772,18544586,18426650,18557708]],[37,"C c c 2","C c c 2","Ccc2",182,"C 2 -2c","",6,[16484,3200,121460,134420,18439772,18426488,18544748,18557708]],[38,"A m m 2","A m m 2","Amm2",185,"A 2 -2","",6,[16484,3200,3362,16322,1551758,1538474,1538636,1551596]],[39,"A e m 2","A e m 2","Aem2",191,"A 2 -2b","",6,[16484,3200,1420538,1433498,1551758,1538474,121460,134420]],[40,"A m a 2","A m a 2","Ama2",197,"A 2 -2a","",6,[16484,3200,17009474,17022434,1551758,1538474,18544748,18557708]],[41,"A e a 2","A e a 2","Aea2",203,"A 2 -2ab","",6,[16484,3200,18426650,18439610,1551758,1538474,17127572,17140532]],[42,"F m m 2","F m m 2","Fmm2",209,"F 2 -2","",6,[16484,3200,3362,16322,1551758,1538474,1538636,1551596,17140694,17127410,17127572,17140532,18439772,18426488,18426650,18439610]],[43,"F d d 2","F d d 2","Fdd2",212,"F 2 -2d","",6,[16484,3200,10809329,10822289,1551758,1538474,9274055,9287015,17140694,17127410,27697343,27710303,18439772,18426488,26398265,26411225]],[44,"I m m 2","I m m 2","Imm2",215,"I 2 -2","",6,[16484,3200,3362,16322,18557870,18544586,18544748,18557708]],[45,"I b a 2","I b a 2","Iba2",218,"I 2 -2c","",6,[16484,3200,121460,134420,18557870,18544586,18426650,18439610]],[46,"I m a 2","I m a 2","Ima2",221,"I 2 -2a","",6,[16484,3200,17009474,17022434,18557870,18544586,1538636,1551596]],[47,"P m m m","P 2/m 2/m 2/m","Pmmm",227,"-P 2 2","",7,[16484,3198,3200,16482,16320,3362,3360,16322]],[48,"P n n n","P 2/n 2/n 2/n","Pnnn",229,"-P 2ab 2bc","2",7,[16484,3198,18426488,18439770,1551594,1538636,17127570,17140532]],[49,"P c c m","P 2/c 2/c 2/m","Pccm",230,"-P 2 2c","",7,[16484,3198,3200,16482,134418,121460,121458,134420]],[50,"P b a n","P 2/b 2/a 2/n","Pban",234,"-P 2ab 2b","2",7,[16484,3198,18426488,18439770,1433496,1420538,17009472,17022434]],[51,"P m m a","P 2_1/m 2/m 2/a","Pmma",239,"-P 2a 2a","",7,[16484,3198,17009312,17022594,17022432,17009474,3360,16322]],[52,"P n n a","P 2/n 2_1/n 2/a","Pnna",245,"-P 2a 2bc","",7,[16484,3198,17009312,17022594,1551594,1538636,18544746,18557708]],[53,"P m n a","P 2/m 2/n 2_1/a","Pmna",251,"-P 2ac 2","",7,[16484,3198,17127410,17140692,16320,3362,17127570,17140532]],[54,"P c c a","P 2_1/c 2/c 2/a","Pcca",257,"-P 2a 2ac","",7,[16484,3198,17009312,17022594,17140530,17127572,121458,134420]],[55,"P b a m","P 2_1/b 2_1/a 2/m","Pbam",263,"-P 2 2ab","",7,[16484,3198,3200,16482,18439608,18426650,18426648,18439610]],[56,"P c c n","P 2_1/c 2_1/c 2/n","Pccn",266,"-P 2ab 2ac","",7,[16484,3198,18426488,18439770,17140530,17127572,1538634,1551596]],[57,"P b c m","P 2/b 2_1/c 2_1/m","Pbcm",269,"-P 2c 2b","",7,[16484,3198,121298,134580,1433496,1420538,1538634,1551596]],[58,"P n n m","P 2_1/n 2_1/n 2/m","Pnnm",275,"-P 2 2n","",7,[16484,3198,3200,16482,18557706,18544748,18544746,18557708]],[59,"P m m n","P 2_1/m 2_1/m 2/n","Pmmn",279,"-P 2ab 2a","2",7,[16484,3198,18426488,18439770,17022432,17009474,1420536,1433498]],[60,"P b c n","P 2_1/b 2/c 2_1/n","Pbcn",284,"-P 2n 2ab","",7,[16484,3198,18544586,18557868,18439608,18426650,121458,134420]],[61,"P b c a","P 2_1/b 2_1/c 2_1/a","Pbca",290,"-P 2ac 2ab","",7,[16484,3198,17127410,17140692,18439608,18426650,1538634,1551596]],[62,"P n m a","P 2_1/n 2_1/m 2_1/a","Pnma",292,"-P 2ac 2n","",7,[16484,3198,17127410,17140692,18557706,18544748,1420536,1433498]],[63,"C m c m","C 2/m 2/c 2_1/m","Cmcm",298,"-C 2c 2","",7,[16484,3198,121298,134580,16320,3362,121458,134420,18439772,18426486,18544586,18557868,18439608,18426650,18544746,18557708]],[64,"C m c e","C 2/m 2/c 2_1/e","Cmce",304,"-C 2ac 2","",7,[16484,3198,17127410,17140692,16320,3362,17127570,17140532,18439772,18426486,1538474,1551756,18439608,18426650,1538634,1551596]],[65,"C m m m","C 2/m 2/m 2/m","Cmmm",310,"-C 2 2","",7,[16484,3198,3200,16482,16320,3362,3360,16322,18439772,18426486,18426488,18439770,18439608,18426650,18426648,18439610]],[66,"C c c m","C 2/c 2/c 2/m","Cccm",313,"-C 2 2c","",7,[16484,3198,3200,16482,134418,121460,121458,134420,18439772,18426486,18426488,18439770,18557706,18544748,18544746,18557708]],[67,"C m m e","C 2/m 2/m 2/e","Cmme",316,"-C 2a 2","",7,[16484,3198,17009312,17022594,16320,3362,17009472,17022434,18439772,18426486,1420376,1433658,18439608,18426650,1420536,1433498]],[68,"C c c e","C 2/c 2/c 2/e","Ccce",323,"-C 2a 2ac","2",7,[16484,3198,17009312,17022594,17140530,17127572,121458,134420,18439772,18426486,1420376,1433658,1551594,1538636,18544746,18557708]],[69,"F m m m","F 2/m 2/m 2/m","Fmmm",334,"-F 2 2","",7,[16484,3198,3200,16482,16320,3362,3360,16322,1551758,1538472,1538474,1551756,1551594,1538636,1538634,1551596,17140694,17127408,17127410,17140692,17140530,17127572,17127570,17140532,18439772,18426486,18426488,18439770,18439608,18426650,18426648,18439610]],[70,"F d d d","F 2/d 2/d 2/d","Fddd",336,"-F 2uv 2vw","2",7,[16484,3198,9214844,9228126,783957,770999,8565465,8578427,1551758,1538472,10750118,10763400,2319231,2306273,10100739,10113701,17140694,17127408,26339054,26352336,17908167,17895209,25689675,25702637,18439772,18426486,27638132,27651414,19207245,19194287,26988753,27001715]],[71,"I m m m","I 2/m 2/m 2/m","Immm",337,"-I 2 2","",7,[16484,3198,3200,16482,16320,3362,3360,16322,18557870,18544584,18544586,18557868,18557706,18544748,18544746,18557708]],[72,"I b a m","I 2/b 2/a 2/m","Ibam",338,"-I 2 2c","",7,[16484,3198,3200,16482,134418,121460,121458,134420,18557870,18544584,18544586,18557868,18439608,18426650,18426648,18439610]],[73,"I b c a","I 2/b 2/c 2/a","Ibca",341,"-I 2b 2c","",7,[16484,3198,1420376,1433658,134418,121460,1538634,1551596,18557870,18544584,17127410,17140692,18439608,18426650,17009472,17022434]],[74,"I m m a","I 2/m 2/m 2/a","Imma",343,"-I 2b 2","",7,[16484,3198,1420376,1433658,16320,3362,1420536,1433498,18557870,18544584,17127410,17140692,18557706,18544748,17127570,17140532]],[75,"P 4","P 4","P4",349,"P 4","",8,[16484,7898,3200,11786]],[76,"P 4_1","P 4_1","P4_1",350,"P 4w","",8,[16484,66947,121298,188933]],[77,"P 4_2","P 4_2","P4_2",351,"P 4c","",8,[16484,125996,3200,129884]],[78,"P 4_3","P 4_3","P4_3",352,"P 4cw","",8,[16484,185045,121298,70835]],[79,"I 4","I 4","I4",353,"I 4","",8,[16484,7898,3200,11786,18557870,18549284,18544586,18553172]],[80,"I 4_1","I 4_1","I4_1",354,"I 4bw","",8,[16484,1484123,18544586,17195045,18557870,17191157,3200,1488011]],[81,"P -4","P -4","P-4",355,"P -4","",9,[16484,11784,3200,7896]],[82,"I -4","I -4","I-4",356,"I -4","",9,[16484,11784,3200,7896,18557870,18553170,18544586,18549282]],[83,"P 4/m","P 4/m","P4/m",357,"-P 4","",10,[16484,3198,7898,11784,3200,16482,11786,7896]],[84,"P 4_2/m","P 4_2/m","P4_2/m",358,"-P 4c","",10,[16484,3198,125996,129882,3200,16482,129884,125994]],[85,"P 4/n","P 4/n","P4/n",360,"-P 4a","2",10,[16484,3198,17014010,17017896,18426488,18439770,1428962,1425072]],[86,"P 4_2/n","P 4_2/n","P4_2/n",362,"-P 4bc","2",10,[16484,3198,1543172,1547058,18426488,18439770,17135996,17132106]],[87,"I 4/m","I 4/m","I4/m",363,"-I 4","",10,[16484,3198,7898,11784,3200,16482,11786,7896,18557870,18544584,18549284,18553170,18544586,18557868,18553172,18549282]],[88,"I 4_1/a","I 4_1/a","I4_1/a",365,"-I 4ad","2",10,[16484,3198,26284703,26288589,17127410,17140692,27823865,27819975,18557870,18544584,10813865,10817751,1420376,1433658,9282479,9278589]],[89,"P 4 2 2","P 4 2 2","P422",366,"P 4 2","",11,[16484,7898,3200,11786,16320,7410,3360,12270]],[90,"P 4 2_1 2","P 4 2_1 2","P42_12",367,"P 4ab 2ab","",11,[16484,18431186,3200,18435074,18439608,7410,18426648,12270]],[91,"P 4_1 2 2","P 4_1 2 2","P4_122",368,"P 4w 2c","",11,[16484,66947,121298,188933,134418,66459,3360,189417]],[92,"P 4_1 2_1 2","P 4_1 2_1 2","P4_12_12",369,"P 4abw 2nw","",11,[16484,18490235,121298,18612221,18616755,125508,18485697,12270]],[93,"P 4_2 2 2","P 4_2 2 2","P4_222",370,"P 4c 2","",11,[16484,125996,3200,129884,16320,125508,3360,130368]],[94,"P 4_2 2_1 2","P 4_2 2_1 2","P4_22_12",371,"P 4n 2n","",11,[16484,18549284,3200,18553172,18557706,7410,18544746,12270]],[95,"P 4_3 2 2","P 4_3 2 2","P4_322",372,"P 4cw 2c","",11,[16484,185045,121298,70835,134418,184557,3360,71319]],[96,"P 4_3 2_1 2","P 4_3 2_1 2","P4_32_12",373,"P 4nw 2abw","",11,[16484,18608333,121298,18494123,18498657,125508,18603795,12270]],[97,"I 4 2 2","I 4 2 2","I422",374,"I 4 2","",11,[16484,7898,3200,11786,16320,7410,3360,12270,18557870,18549284,18544586,18553172,18557706,18548796,18544746,18553656]],[98,"I 4_1 2 2","I 4_1 2 2","I4_122",375,"I 4bw 2bw","",11,[16484,1484123,18544586,17195045,1492545,7410,17186619,18553656,18557870,17191157,3200,1488011,17199579,18548796,1479585,12270]],[99,"P 4 m m","P 4 m m","P4mm",376,"P 4 -2","",12,[16484,7898,3200,11786,3362,12272,16322,7412]],[100,"P 4 b m","P 4 b m","P4bm",377,"P 4 -2ab","",12,[16484,7898,3200,11786,18426650,18435560,18439610,18430700]],[101,"P 4_2 c m","P 4_2 c m","P4_2cm",378,"P 4c -2c","",12,[16484,125996,3200,129884,121460,12272,134420,7412]],[102,"P 4_2 n m","P 4_2 n m","P4_2nm",379,"P 4n -2n","",12,[16484,18549284,3200,18553172,18544748,12272,18557708,7412]],[103,"P 4 c c","P 4 c c","P4cc",380,"P 4 -2c","",12,[16484,7898,3200,11786,121460,130370,134420,125510]],[104,"P 4 n c","P 4 n c","P4nc",381,"P 4 -2n","",12,[16484,7898,3200,11786,18544748,18553658,18557708,18548798]],[105,"P 4_2 m c","P 4_2 m c","P4_2mc",382,"P 4c -2","",12,[16484,125996,3200,129884,3362,130370,16322,125510]],[106,"P 4_2 b c","P 4_2 b c","P4_2bc",383,"P 4c -2ab","",12,[16484,125996,3200,129884,18426650,18553658,18439610,18548798]],[107,"I 4 m m","I 4 m m","I4mm",384,"I 4 -2","",12,[16484,7898,3200,11786,3362,12272,16322,7412,18557870,18549284,18544586,18553172,18544748,18553658,18557708,18548798]],[108,"I 4 c m","I 4 c m","I4cm",385,"I 4 -2c","",12,[16484,7898,3200,11786,121460,130370,134420,125510,18557870,18549284,18544586,18553172,18426650,18435560,18439610,18430700]],[109,"I 4_1 m d","I 4_1 m d","I4_1md",386,"I 4bw -2","",12,[16484,1484123,18544586,17195045,3362,1488497,18557708,17190671,18557870,17191157,3200,1488011,18544748,17195531,16322,1483637]],[110,"I 4_1 c d","I 4_1 c d","I4_1cd",387,"I 4bw -2c","",12,[16484,1484123,18544586,17195045,121460,1606595,18439610,17072573,18557870,17191157,3200,1488011,18426650,17077433,134420,1601735]],[111,"P -4 2 m","P -4 2 m","P-42m",388,"P -4 2","",13,[16484,11784,3200,7896,16320,12272,3360,7412]],[112,"P -4 2 c","P -4 2 c","P-42c",389,"P -4 2c","",13,[16484,11784,3200,7896,134418,130370,121458,125510]],[113,"P -4 2_1 m","P -4 2_1 m","P-42_1m",390,"P -4 2ab","",13,[16484,11784,3200,7896,18439608,18435560,18426648,18430700]],[114,"P -4 2_1 c","P -4 2_1 c","P-42_1c",391,"P -4 2n","",13,[16484,11784,3200,7896,18557706,18553658,18544746,18548798]],[115,"P -4 m 2","P -4 m 2","P-4m2",392,"P -4 -2","",13,[16484,11784,3200,7896,3362,7410,16322,12270]],[116,"P -4 c 2","P -4 c 2","P-4c2",393,"P -4 -2c","",13,[16484,11784,3200,7896,121460,125508,134420,130368]],[117,"P -4 b 2","P -4 b 2","P-4b2",394,"P -4 -2ab","",13,[16484,11784,3200,7896,18426650,18430698,18439610,18435558]],[118,"P -4 n 2","P -4 n 2","P-4n2",395,"P -4 -2n","",13,[16484,11784,3200,7896,18544748,18548796,18557708,18553656]],[119,"I -4 m 2","I -4 m 2","I-4m2",396,"I -4 -2","",13,[16484,11784,3200,7896,3362,7410,16322,12270,18557870,18553170,18544586,18549282,18544748,18548796,18557708,18553656]],[120,"I -4 c 2","I -4 c 2","I-4c2",397,"I -4 -2c","",13,[16484,11784,3200,7896,121460,125508,134420,130368,18557870,18553170,18544586,18549282,18426650,18430698,18439610,18435558]],[121,"I -4 2 m","I -4 2 m","I-42m",398,"I -4 2","",13,[16484,11784,3200,7896,16320,12272,3360,7412,18557870,18553170,18544586,18549282,18557706,18553658,18544746,18548798]],[122,"I -4 2 d","I -4 2 d","I-42d",399,"I -4 2bw","",13,[16484,11784,3200,7896,1492545,1488497,1479585,1483637,18557870,18553170,18544586,18549282,17199579,17195531,17186619,17190671]],[123,"P 4/m m m","P 4/m 2/m 2/m","P4/mmm",400,"-P 4 2","",14,[16484,3198,7898,11784,3200,16482,11786,7896,16320,3362,7410,12272,3360,16322,12270,7412]],[124,"P 4/m c c","P 4/m 2/c 2/c","P4/mcc",401,"-P 4 2c","",14,[16484,3198,7898,11784,3200,16482,11786,7896,134418,121460,125508,130370,121458,134420,130368,125510]],[125,"P 4/n b m","P 4/n 2/b 2/m","P4/nbm",403,"-P 4a 2b","2",14,[16484,3198,17014010,17017896,18426488,18439770,1428962,1425072,1433496,1420538,18430698,18435560,17009472,17022434,12270,7412]],[126,"P 4/n n c","P 4/n 2/n 2/c","P4/nnc",405,"-P 4a 2bc","2",14,[16484,3198,17014010,17017896,18426488,18439770,1428962,1425072,1551594,1538636,18548796,18553658,17127570,17140532,130368,125510]],[127,"P 4/m b m","P 4/m 2_1/b m","P4/mbm",406,"-P 4 2ab","",14,[16484,3198,7898,11784,3200,16482,11786,7896,18439608,18426650,18430698,18435560,18426648,18439610,18435558,18430700]],[128,"P 4/m n c","P 4/m 2_1/n c","P4/mnc",407,"-P 4 2n","",14,[16484,3198,7898,11784,3200,16482,11786,7896,18557706,18544748,18548796,18553658,18544746,18557708,18553656,18548798]],[129,"P 4/n m m","P 4/n 2_1/m m","P4/nmm",409,"-P 4a 2a","2",14,[16484,3198,17014010,17017896,18426488,18439770,1428962,1425072,17022432,17009474,7410,12272,1420536,1433498,18435558,18430700]],[130,"P 4/n c c","P 4/n 2_1/c c","P4/ncc",411,"-P 4a 2ac","2",14,[16484,3198,17014010,17017896,18426488,18439770,1428962,1425072,17140530,17127572,125508,130370,1538634,1551596,18553656,18548798]],[131,"P 4_2/m m c","P 4_2/m 2/m 2/c","P4_2/mmc",412,"-P 4c 2","",14,[16484,3198,125996,129882,3200,16482,129884,125994,16320,3362,125508,130370,3360,16322,130368,125510]],[132,"P 4_2/m c m","P 4_2/m 2/c 2/m","P4_2/mcm",413,"-P 4c 2c","",14,[16484,3198,125996,129882,3200,16482,129884,125994,134418,121460,7410,12272,121458,134420,12270,7412]],[133,"P 4_2/n b c","P 4_2/n 2/b 2/c","P4_2/nbc",415,"-P 4ac 2b","2",14,[16484,3198,17132108,17135994,18426488,18439770,1547060,1543170,1433496,1420538,18548796,18553658,17009472,17022434,130368,125510]],[134,"P 4_2/n n m","P 4_2/n 2/n 2/m","P4_2/nnm",417,"-P 4ac 2bc","2",14,[16484,3198,17132108,17135994,18426488,18439770,1547060,1543170,1551594,1538636,18430698,18435560,17127570,17140532,12270,7412]],[135,"P 4_2/m b c","P 4_2/m 2_1/b 2/c","P4_2/mbc",418,"-P 4c 2ab","",14,[16484,3198,125996,129882,3200,16482,129884,125994,18439608,18426650,18548796,18553658,18426648,18439610,18553656,18548798]],[136,"P 4_2/m n m","P 4_2/m 2_1/n 2/m","P4_2/mnm",419,"-P 4n 2n","",14,[16484,3198,18549284,18553170,3200,16482,18553172,18549282,18557706,18544748,7410,12272,18544746,18557708,12270,7412]],[137,"P 4_2/n m c","P 4_2/n 2_1/m 2/c","P4_2/nmc",421,"-P 4ac 2a","2",14,[16484,3198,17132108,17135994,18426488,18439770,1547060,1543170,17022432,17009474,125508,130370,1420536,1433498,18553656,18548798]],[138,"P 4_2/n c m","P 4_2/n 2_1/c 2/m","P4_2/ncm",423,"-P 4ac 2ac","2",14,[16484,3198,17132108,17135994,18426488,18439770,1547060,1543170,17140530,17127572,7410,12272,1538634,1551596,18435558,18430700]],[139,"I 4/m m m","I 4/m 2/m 2/m","I4/mmm",424,"-I 4 2","",14,[16484,3198,7898,11784,3200,16482,11786,7896,16320,3362,7410,12272,3360,16322,12270,7412,18557870,18544584,18549284,18553170,18544586,18557868,18553172,18549282,18557706,18544748,18548796,18553658,18544746,18557708,18553656,18548798]],[140,"I 4/m c m","I 4/m 2/c 2/m","I4/mcm",425,"-I 4 2c","",14,[16484,3198,7898,11784,3200,16482,11786,7896,134418,121460,125508,130370,121458,134420,130368,125510,18557870,18544584,18549284,18553170,18544586,18557868,18553172,18549282,18439608,18426650,18430698,18435560,18426648,18439610,18435558,18430700]],[141,"I 4_1/a m d","I 4_1/a 2/m 2/d","I4_1/amd",427,"-I 4bd 2","2",14,[16484,3198,10695767,10699653,17127410,17140692,9400577,9396687,16320,3362,9396201,9401063,17127570,17140532,10700139,10695281,18557870,18544584,26402801,26406687,1420376,1433658,27705767,27701877,18557706,18544748,27701391,27706253,1420536,1433498,26407173,26402315]],[142,"I 4_1/a c d","I 4_1/a 2/c 2/d","I4_1/acd",429,"-I 4bd 2c","2",14,[16484,3198,10695767,10699653,17127410,17140692,9400577,9396687,134418,121460,9278103,9282965,17009472,17022434,10818237,10813379,18557870,18544584,26402801,26406687,1420376,1433658,27705767,27701877,18439608,18426650,27819489,27824351,1538634,1551596,26289075,26284217]],[143,"P 3","P 3","P3",430,"P 3","",15,[16484,7817,5225]],[144,"P 3_1","P 3_1","P3_1",431,"P 31","",15,[16484,86549,162689]],[145,"P 3_2","P 3_2","P3_2",432,"P 32","",15,[16484,165281,83957]],[146,"R 3","R 3","R3",433,"R 3","H",15,[16484,7817,5225,23714816,23706149,23703557,13400924,13392257,13389665]],[147,"P -3","P -3","P-3",435,"-P 3","",16,[16484,3198,7817,11865,5225,14457]],[148,"R -3","R -3","R-3",436,"-R 3","H",16,[16484,3198,7817,11865,5225,14457,23714816,23701530,23706149,23710197,23703557,23712789,13400924,13387638,13392257,13396305,13389665,13398897]],[149,"P 3 1 2","P 3 1 2","P312",438,"P 3 2","",17,[16484,7817,5225,7410,5547,16563]],[150,"P 3 2 1","P 3 2 1","P321",439,"P 3 2\"","",17,[16484,7817,5225,12270,14133,3117]],[151,"P 3_1 1 2","P 3_1 1 2","P3_112",440,"P 31 2 (0 0 4)","",17,[16484,86549,162689,164874,84279,16563]],[152,"P 3_1 2 1","P 3_1 2 1","P3_121",441,"P 31 2\"","",17,[16484,86549,162689,12270,171597,81849]],[153,"P 3_2 1 2","P 3_2 1 2","P3_212",442,"P 32 2 (0 0 2)","",17,[16484,165281,83957,86142,163011,16563]],[154,"P 3_2 2 1","P 3_2 2 1","P3_221",443,"P 32 2\"","",17,[16484,165281,83957,12270,92865,160581]],[155,"R 3 2","R 3 2","R32",444,"R 3 2\"","H",17,[16484,7817,5225,12270,14133,3117,23714816,23706149,23703557,23710602,23712465,23701449,13400924,13392257,13389665,13396710,13398573,13387557]],[156,"P 3 m 1","P 3 m 1","P3m1",446,"P 3 -2\"","",18,[16484,7817,5225,7412,5549,16565]],[157,"P 3 1 m","P 3 1 m","P31m",447,"P 3 -2","",18,[16484,7817,5225,12272,14135,3119]],[158,"P 3 c 1","P 3 c 1","P3c1",448,"P 3 -2\"c","",18,[16484,7817,5225,125510,123647,134663]],[159,"P 3 1 c","P 3 1 c","P31c",449,"P 3 -2c","",18,[16484,7817,5225,130370,132233,121217]],[160,"R 3 m","R 3 m","R3m",450,"R 3 -2\"","H",18,[16484,7817,5225,7412,5549,16565,23714816,23706149,23703557,23705744,23703881,23714897,13400924,13392257,13389665,13391852,13389989,13401005]],[161,"R 3 c","R 3 c","R3c",452,"R 3 -2\"c","H",18,[16484,7817,5225,125510,123647,134663,23714816,23706149,23703557,23823842,23821979,23832995,13400924,13392257,13389665,13273754,13271891,13282907]],[162,"P -3 1 m","P -3 1 2/m","P-31m",454,"-P 3 2","",19,[16484,3198,7817,11865,5225,14457,7410,12272,5547,14135,16563,3119]],[163,"P -3 1 c","P -3 1 2/c","P-31c",455,"-P 3 2c","",19,[16484,3198,7817,11865,5225,14457,125508,130370,123645,132233,134661,121217]],[164,"P -3 m 1","P -3 2/m 1","P-3m1",456,"-P 3 2\"","",19,[16484,3198,7817,11865,5225,14457,12270,7412,14133,5549,3117,16565]],[165,"P -3 c 1","P -3 2/c 1","P-3c1",457,"-P 3 2\"c","",19,[16484,3198,7817,11865,5225,14457,130368,125510,132231,123647,121215,134663]],[166,"R -3 m","R -3 2/m","R-3m",458,"-R 3 2\"","H",19,[16484,3198,7817,11865,5225,14457,12270,7412,14133,5549,3117,16565,23714816,23701530,23706149,23710197,23703557,23712789,23710602,23705744,23712465,23703881,23701449,23714897,13400924,13387638,13392257,13396305,13389665,13398897,13396710,13391852,13398573,13389989,13387557,13401005]],[167,"R -3 c","R -3 2/c","R-3c",460,"-R 3 2\"c","H",19,[16484,3198,7817,11865,5225,14457,130368,125510,132231,123647,121215,134663,23714816,23701530,23706149,23710197,23703557,23712789,23828700,23823842,23830563,23821979,23819547,23832995,13400924,13387638,13392257,13396305,13389665,13398897,13278612,13273754,13280475,13271891,13269459,13282907]],[168,"P 6","P 6","P6",462,"P 6","",20,[16484,14459,7817,3200,5225,11867]],[169,"P 6_1","P 6_1","P6_1",463,"P 61","",20,[16484,53825,86549,121298,162689,208697]],[170,"P 6_5","P 6_5","P6_5",464,"P 65","",20,[16484,211289,165281,121298,83957,51233]],[171,"P 6_2","P 6_2","P6_2",465,"P 62","",20,[16484,93191,165281,3200,83957,169331]],[172,"P 6_4","P 6_4","P6_4",466,"P 64","",20,[16484,171923,86549,3200,162689,90599]],[173,"P 6_3","P 6_3","P6_3",467,"P 6c","",20,[16484,132557,7817,121298,5225,129965]],[174,"P -6","P -6","P-6",468,"P -6","",21,[16484,5223,7817,16482,5225,7815]],[175,"P 6/m","P 6/m","P6/m",469,"-P 6","",22,[16484,3198,14459,5223,7817,11865,3200,16482,5225,14457,11867,7815]],[176,"P 6_3/m","P 6_3/m","P6_3/m",470,"-P 6c","",22,[16484,3198,132557,123321,7817,11865,121298,134580,5225,14457,129965,125913]],[177,"P 6 2 2","P 6 2 2","P622",471,"P 6 2","",23,[16484,14459,7817,3200,5225,11867,7410,3117,5547,12270,16563,14133]],[178,"P 6_1 2 2","P 6_1 2 2","P6_122",472,"P 61 2 (0 0 5)","",23,[16484,53825,86549,121298,162689,208697,204240,160581,123645,91002,55929,14133]],[179,"P 6_5 2 2","P 6_5 2 2","P6_522",473,"P 65 2 (0 0 1)","",23,[16484,211289,165281,121298,83957,51233,46776,81849,123645,169734,213393,14133]],[180,"P 6_2 2 2","P 6_2 2 2","P6_222",474,"P 62 2 (0 0 4)","",23,[16484,93191,165281,3200,83957,169331,164874,81849,5547,169734,95295,14133]],[181,"P 6_4 2 2","P 6_4 2 2","P6_422",475,"P 64 2 (0 0 2)","",23,[16484,171923,86549,3200,162689,90599,86142,160581,5547,91002,174027,14133]],[182,"P 6_3 2 2","P 6_3 2 2","P6_322",476,"P 6c 2c","",23,[16484,132557,7817,121298,5225,129965,125508,3117,123645,12270,134661,14133]],[183,"P 6 m m","P 6 m m","P6mm",477,"P 6 -2","",24,[16484,14459,7817,3200,5225,11867,12272,16565,14135,7412,3119,5549]],[184,"P 6 c c","P 6 c c","P6cc",478,"P 6 -2c","",24,[16484,14459,7817,3200,5225,11867,130370,134663,132233,125510,121217,123647]],[185,"P 6_3 c m","P 6_3 c m","P6_3cm",479,"P 6c -2","",24,[16484,132557,7817,121298,5225,129965,12272,134663,14135,125510,3119,123647]],[186,"P 6_3 m c","P 6_3 m c","P6_3mc",480,"P 6c -2c","",24,[16484,132557,7817,121298,5225,129965,130370,16565,132233,7412,121217,5549]],[187,"P -6 m 2","P -6 m 2","P-6m2",481,"P -6 2","",25,[16484,5223,7817,16482,5225,7815,7410,16565,5547,7412,16563,5549]],[188,"P -6 c 2","P -6 c 2","P-6c2",482,"P -6c 2","",25,[16484,123321,7817,134580,5225,125913,7410,134663,5547,125510,16563,123647]],[189,"P -6 2 m","P -6 2 m","P-62m",483,"P -6 -2","",25,[16484,5223,7817,16482,5225,7815,12272,3117,14135,12270,3119,14133]],[190,"P -6 2 c","P -6 2 c","P-62c",484,"P -6c -2c","",25,[16484,123321,7817,134580,5225,125913,130370,3117,132233,12270,121217,14133]],[191,"P 6/m m m","P 6/m 2/m 2/m","P6/mmm",485,"-P 6 2","",26,[16484,3198,14459,5223,7817,11865,3200,16482,5225,14457,11867,7815,7410,12272,3117,16565,5547,14135,12270,7412,16563,3119,14133,5549]],[192,"P 6/m c c","P 6/m 2/c 2/c","P6/mcc",486,"-P 6 2c","",26,[16484,3198,14459,5223,7817,11865,3200,16482,5225,14457,11867,7815,125508,130370,121215,134663,123645,132233,130368,125510,134661,121217,132231,123647]],[193,"P 6_3/m c m","P 6_3/m 2/c 2/m","P6_3/mcm",487,"-P 6c 2","",26,[16484,3198,132557,123321,7817,11865,121298,134580,5225,14457,129965,125913,7410,12272,121215,134663,5547,14135,130368,125510,16563,3119,132231,123647]],[194,"P 6_3/m m c","P 6_3/m 2/m 2/c","P6_3/mmc",488,"-P 6c 2c","",26,[16484,3198,132557,123321,7817,11865,121298,134580,5225,14457,129965,125913,125508,130370,3117,16565,123645,132233,12270,7412,134661,121217,14133,5549]],[195,"P 2 3","P 2 3","P23",489,"P 2 2 3","",27,[16484,3200,16320,3360,10816,10324,9352,8872,12064,7672,7636,11992]],[196,"F 2 3","F 2 3","F23",490,"F 2 2 3","",27,[16484,3200,16320,3360,10816,10324,9352,8872,12064,7672,7636,11992,1551758,1538474,1551594,1538634,1546090,1545598,1544626,1544146,1547338,1542946,1542910,1547266,17140694,17127410,17140530,17127570,17135026,17134534,17133562,17133082,17136274,17131882,17131846,17136202,18439772,18426488,18439608,18426648,18434104,18433612,18432640,18432160,18435352,18430960,18430924,18435280]],[197,"I 2 3","I 2 3","I23",491,"I 2 2 3","",27,[16484,3200,16320,3360,10816,10324,9352,8872,12064,7672,7636,11992,18557870,18544586,18557706,18544746,18552202,18551710,18550738,18550258,18553450,18549058,18549022,18553378]],[198,"P 2_1 3","P 2_1 3","P2_13",492,"P 2ac 2ab 3","",27,[16484,17127410,18439608,1538634,10816,18433612,1544626,17133082,12064,1542946,17131846,18435280]],[199,"I 2_1 3","I 2_1 3","I2_13",493,"I 2b 2c 3","",27,[16484,1420376,134418,1538634,10816,128422,17015464,17133082,12064,17013784,1424812,18435280,18557870,17127410,18439608,17009472,18552202,18433612,1544626,1426048,18553450,1542946,17131846,130090]],[200,"P m -3","P 2/m -3","Pm-3",494,"-P 2 2 3","",28,[16484,3198,3200,16482,16320,3362,3360,16322,10816,8866,10324,9358,9352,10330,8872,10810,12064,7618,7672,12010,7636,12046,11992,7690]],[201,"P n -3","P 2/n -3","Pn-3",496,"-P 2ab 2bc 3","2",28,[16484,3198,18426488,18439770,1551594,1538636,17127570,17140532,10816,8866,1545598,1544632,17133562,17134540,18432160,18434098,12064,7618,17131882,17136220,18430924,18435334,1547266,1542964]],[202,"F m -3","F 2/m -3","Fm-3",497,"-F 2 2 3","",28,[16484,3198,3200,16482,16320,3362,3360,16322,10816,8866,10324,9358,9352,10330,8872,10810,12064,7618,7672,12010,7636,12046,11992,7690,1551758,1538472,1538474,1551756,1551594,1538636,1538634,1551596,1546090,1544140,1545598,1544632,1544626,1545604,1544146,1546084,1547338,1542892,1542946,1547284,1542910,1547320,1547266,1542964,17140694,17127408,17127410,17140692,17140530,17127572,17127570,17140532,17135026,17133076,17134534,17133568,17133562,17134540,17133082,17135020,17136274,17131828,17131882,17136220,17131846,17136256,17136202,17131900,18439772,18426486,18426488,18439770,18439608,18426650,18426648,18439610,18434104,18432154,18433612,18432646,18432640,18433618,18432160,18434098,18435352,18430906,18430960,18435298,18430924,18435334,18435280,18430978]],[203,"F d -3","F 2/d -3","Fd-3",499,"-F 2uv 2vw 3","2",28,[16484,3198,9214844,9228126,783957,770999,8565465,8578427,10816,8866,777961,776995,8571457,8572435,9220516,9222454,12064,7618,8569777,8574115,9219280,9223690,779629,775327,1551758,1538472,10750118,10763400,2319231,2306273,10100739,10113701,1546090,1544140,2313235,2312269,10106731,10107709,10755790,10757728,1547338,1542892,10105051,10109389,10754554,10758964,2314903,2310601,17140694,17127408,26339054,26352336,17908167,17895209,25689675,25702637,17135026,17133076,17902171,17901205,25695667,25696645,26344726,26346664,17136274,17131828,25693987,25698325,26343490,26347900,17903839,17899537,18439772,18426486,27638132,27651414,19207245,19194287,26988753,27001715,18434104,18432154,19201249,19200283,26994745,26995723,27643804,27645742,18435352,18430906,26993065,26997403,27642568,27646978,19202917,19198615]],[204,"I m -3","I 2/m -3","Im-3",500,"-I 2 2 3","",28,[16484,3198,3200,16482,16320,3362,3360,16322,10816,8866,10324,9358,9352,10330,8872,10810,12064,7618,7672,12010,7636,12046,11992,7690,18557870,18544584,18544586,18557868,18557706,18544748,18544746,18557708,18552202,18550252,18551710,18550744,18550738,18551716,18550258,18552196,18553450,18549004,18549058,18553396,18549022,18553432,18553378,18549076]],[205,"P a -3","P 2_1/a -3","Pa-3",501,"-P 2ac 2ab 3","",28,[16484,3198,17127410,17140692,18439608,18426650,1538634,1551596,10816,8866,18433612,18432646,1544626,1545604,17133082,17135020,12064,7618,1542946,1547284,17131846,17136256,18435280,18430978]],[206,"I a -3","I 2_1/a -3","Ia-3",502,"-I 2b 2c 3","",28,[16484,3198,1420376,1433658,134418,121460,1538634,1551596,10816,8866,128422,127456,17015464,17016442,17133082,17135020,12064,7618,17013784,17018122,1424812,1429222,18435280,18430978,18557870,18544584,17127410,17140692,18439608,18426650,17009472,17022434,18552202,18550252,18433612,18432646,1544626,1545604,1426048,1427986,18553450,18549004,1542946,1547284,17131846,17136256,130090,125788]],[207,"P 4 3 2","P 4 3 2","P432",503,"P 4 2 3","",29,[16484,7898,3200,11786,16320,7410,3360,12270,10816,10498,10324,10642,9352,9022,8872,9202,12064,16426,7672,3310,7636,3250,11992,16378]],[208,"P 4_2 3 2","P 4_2 3 2","P4_232",504,"P 4n 2 3","",29,[16484,18549284,3200,18553172,16320,18548796,3360,18553656,10816,18551884,10324,18552028,9352,18550408,8872,18550588,12064,18557812,7672,18544696,7636,18544636,11992,18557764]],[209,"F 4 3 2","F 4 3 2","F432",505,"F 4 2 3","",29,[16484,7898,3200,11786,16320,7410,3360,12270,10816,10498,10324,10642,9352,9022,8872,9202,12064,16426,7672,3310,7636,3250,11992,16378,1551758,1543172,1538474,1547060,1551594,1542684,1538634,1547544,1546090,1545772,1545598,1545916,1544626,1544296,1544146,1544476,1547338,1551700,1542946,1538584,1542910,1538524,1547266,1551652,17140694,17132108,17127410,17135996,17140530,17131620,17127570,17136480,17135026,17134708,17134534,17134852,17133562,17133232,17133082,17133412,17136274,17140636,17131882,17127520,17131846,17127460,17136202,17140588,18439772,18431186,18426488,18435074,18439608,18430698,18426648,18435558,18434104,18433786,18433612,18433930,18432640,18432310,18432160,18432490,18435352,18439714,18430960,18426598,18430924,18426538,18435280,18439666]],[210,"F 4_1 3 2","F 4_1 3 2","F4_132",506,"F 4d 2 3","",29,[16484,9278591,1538474,26406689,16320,10813377,1538634,27706251,10816,9281191,17134534,27704623,9352,26403925,17133082,10815169,12064,9287119,18430960,10809277,7636,27697231,18435280,26411281,1551758,10813865,3200,27705767,1551594,9278103,3360,26407173,1546090,10816465,18433612,26405545,1544626,27703003,18432160,9279895,1547338,10822393,17131882,9274003,1542910,26398153,17136202,27710359,17140694,26402801,18426488,9282479,17140530,27701391,18426648,10818237,17135026,26405401,10324,10816609,17133562,9279715,8872,27703183,17136274,26411329,1542946,27697291,17131846,10809217,1547266,9287071,18439772,27701879,17127410,10817753,18439608,26402313,17127570,9282963,18434104,27704479,1545598,9281335,18432640,10814989,1544146,26404105,18435352,27710407,7672,26398213,18430924,9273943,11992,10822345]],[211,"I 4 3 2","I 4 3 2","I432",507,"I 4 2 3","",29,[16484,7898,3200,11786,16320,7410,3360,12270,10816,10498,10324,10642,9352,9022,8872,9202,12064,16426,7672,3310,7636,3250,11992,16378,18557870,18549284,18544586,18553172,18557706,18548796,18544746,18553656,18552202,18551884,18551710,18552028,18550738,18550408,18550258,18550588,18553450,18557812,18549058,18544696,18549022,18544636,18553378,18557764]],[212,"P 4_3 3 2","P 4_3 3 2","P4_332",508,"P 4acd 2ab 3","",29,[16484,26402801,17127410,27705767,18439608,9278103,1538634,10818237,10816,27704479,18433612,10816609,1544626,9279715,17133082,26404105,12064,10822393,1542946,26398213,17131846,9273943,18435280,27710359]],[213,"P 4_1 3 2","P 4_1 3 2","P4_132",509,"P 4bd 2ab 3","",29,[16484,10695767,17127410,9400577,18439608,27819489,1538634,26289075,10816,9399289,18433612,26287447,1544626,27821101,17133082,10697071,12064,26293231,1542946,10691179,17131846,27815329,18435280,9405169]],[214,"I 4_1 3 2","I 4_1 3 2","I4_132",510,"I 4bd 2c 3","",29,[16484,10695767,17127410,9400577,134418,9278103,17009472,10818237,10816,9399289,18433612,26287447,17015464,9279715,1426048,26404105,12064,26293231,1542946,10691179,1424812,9273943,130090,27710359,18557870,26402801,1420376,27705767,18439608,27819489,1538634,26289075,18552202,27704479,128422,10816609,1544626,27821101,17133082,10697071,18553450,10822393,17013784,26398213,17131846,27815329,18435280,9405169]],[215,"P -4 3 m","P -4 3 m","P-43m",511,"P -4 2 3","",30,[16484,11784,3200,7896,16320,12272,3360,7412,10816,9184,10324,9040,9352,10660,8872,10480,12064,3256,7672,16372,7636,16432,11992,3304]],[216,"F -4 3 m","F -4 3 m","F-43m",512,"F -4 2 3","",30,[16484,11784,3200,7896,16320,12272,3360,7412,10816,9184,10324,9040,9352,10660,8872,10480,12064,3256,7672,16372,7636,16432,11992,3304,1551758,1547058,1538474,1543170,1551594,1547546,1538634,1542686,1546090,1544458,1545598,1544314,1544626,1545934,1544146,1545754,1547338,1538530,1542946,1551646,1542910,1551706,1547266,1538578,17140694,17135994,17127410,17132106,17140530,17136482,17127570,17131622,17135026,17133394,17134534,17133250,17133562,17134870,17133082,17134690,17136274,17127466,17131882,17140582,17131846,17140642,17136202,17127514,18439772,18435072,18426488,18431184,18439608,18435560,18426648,18430700,18434104,18432472,18433612,18432328,18432640,18433948,18432160,18433768,18435352,18426544,18430960,18439660,18430924,18439720,18435280,18426592]],[217,"I -4 3 m","I -4 3 m","I-43m",513,"I -4 2 3","",30,[16484,11784,3200,7896,16320,12272,3360,7412,10816,9184,10324,9040,9352,10660,8872,10480,12064,3256,7672,16372,7636,16432,11992,3304,18557870,18553170,18544586,18549282,18557706,18553658,18544746,18548798,18552202,18550570,18551710,18550426,18550738,18552046,18550258,18551866,18553450,18544642,18549058,18557758,18549022,18557818,18553378,18544690]],[218,"P -4 3 n","P -4 3 n","P-43n",514,"P -4n 2 3","",30,[16484,18553170,3200,18549282,16320,18553658,3360,18548798,10816,18550570,10324,18550426,9352,18552046,8872,18551866,12064,18544642,7672,18557758,7636,18557818,11992,18544690]],[219,"F -4 3 c","F -4 3 c","F-43c",515,"F -4a 2 3","",30,[16484,17017896,18426488,1425072,16320,17018384,18426648,1424588,10816,1426360,1545598,127138,9352,1427836,1544146,128578,12064,121354,17131882,17022484,7636,134530,17136202,17009416,1551758,18553170,17127410,125994,1551594,18553658,17127570,125510,1546090,127282,10324,1426216,1544626,128758,8872,1427656,1547338,1420432,18430960,18557758,1542910,1433608,18435280,18544690,17140694,129882,1538474,18549282,17140530,130370,1538634,18548798,17135026,18550570,18433612,17015152,17133562,18552046,18432160,17016592,17136274,17009368,7672,134470,17131846,17022544,11992,121402,18439772,1428960,3200,17014008,18439608,1429448,3360,17013524,18434104,17015296,17134534,18550426,18432640,17016772,17133082,18551866,18435352,18544642,1542946,1433548,18430924,18557818,1547266,1420480]],[220,"I -4 3 d","I -4 3 d","I-43d",516,"I -4bd 2c 3","",30,[16484,10699653,1420376,27701877,134418,9282965,1538634,26284217,10816,9397975,128422,10815007,17015464,9281353,17133082,10698349,12064,26280061,17013784,26411275,1424812,9287125,18435280,9392095,18557870,26406687,17127410,9396687,18439608,27824351,17009472,10813379,18552202,27703165,18433612,26285845,1544626,27822739,1426048,26405383,18553450,10809223,1542946,10704241,17131846,27828511,130090,27697285]],[221,"P m -3 m","P 4/m -3 2/m","Pm-3m",517,"-P 4 2 3","",31,[16484,3198,7898,11784,3200,16482,11786,7896,16320,3362,7410,12272,3360,16322,12270,7412,10816,8866,10498,9184,10324,9358,10642,9040,9352,10330,9022,10660,8872,10810,9202,10480,12064,7618,16426,3256,7672,12010,3310,16372,7636,12046,3250,16432,11992,7690,16378,3304]],[222,"P n -3 n","P 4/n -3 2/n","Pn-3n",519,"-P 4a 2bc 3","2",31,[16484,3198,17014010,17017896,18426488,18439770,1428962,1425072,1551594,1538636,18548796,18553658,17127570,17140532,130368,125510,10816,8866,1427674,1426360,1545598,1544632,128740,127138,17133562,17134540,18550408,18552046,18432160,18434098,17015314,17016592,12064,7618,134524,121354,17131882,17136220,17009422,17022484,18430924,18435334,18544636,18557818,1547266,1542964,1433554,1420480]],[223,"P m -3 n","P 4_2/m -3 2/n","Pm-3n",520,"-P 4n 2 3","",31,[16484,3198,18549284,18553170,3200,16482,18553172,18549282,16320,3362,18548796,18553658,3360,16322,18553656,18548798,10816,8866,18551884,18550570,10324,9358,18552028,18550426,9352,10330,18550408,18552046,8872,10810,18550588,18551866,12064,7618,18557812,18544642,7672,12010,18544696,18557758,7636,12046,18544636,18557818,11992,7690,18557764,18544690]],[224,"P n -3 m","P 4_2/n -3 2/m","Pn-3m",522,"-P 4bc 2bc 3","2",31,[16484,3198,1543172,1547058,18426488,18439770,17135996,17132106,1551594,1538636,7410,12272,17127570,17140532,18435558,18430700,10816,8866,17134708,17133394,1545598,1544632,18433930,18432328,17133562,17134540,9022,10660,18432160,18434098,1544476,1545754,12064,7618,18439714,18426544,17131882,17136220,1538584,1551646,18430924,18435334,3250,16432,1547266,1542964,17140588,17127514]],[225,"F m -3 m","F 4/m -3 2/m","Fm-3m",523,"-F 4 2 3","",31,[16484,3198,7898,11784,3200,16482,11786,7896,16320,3362,7410,12272,3360,16322,12270,7412,10816,8866,10498,9184,10324,9358,10642,9040,9352,10330,9022,10660,8872,10810,9202,10480,12064,7618,16426,3256,7672,12010,3310,16372,7636,12046,3250,16432,11992,7690,16378,3304,1551758,1538472,1543172,1547058,1538474,1551756,1547060,1543170,1551594,1538636,1542684,1547546,1538634,1551596,1547544,1542686,1546090,1544140,1545772,1544458,1545598,1544632,1545916,1544314,1544626,1545604,1544296,1545934,1544146,1546084,1544476,1545754,1547338,1542892,1551700,1538530,1542946,1547284,1538584,1551646,1542910,1547320,1538524,1551706,1547266,1542964,1551652,1538578,17140694,17127408,17132108,17135994,17127410,17140692,17135996,17132106,17140530,17127572,17131620,17136482,17127570,17140532,17136480,17131622,17135026,17133076,17134708,17133394,17134534,17133568,17134852,17133250,17133562,17134540,17133232,17134870,17133082,17135020,17133412,17134690,17136274,17131828,17140636,17127466,17131882,17136220,17127520,17140582,17131846,17136256,17127460,17140642,17136202,17131900,17140588,17127514,18439772,18426486,18431186,18435072,18426488,18439770,18435074,18431184,18439608,18426650,18430698,18435560,18426648,18439610,18435558,18430700,18434104,18432154,18433786,18432472,18433612,18432646,18433930,18432328,18432640,18433618,18432310,18433948,18432160,18434098,18432490,18433768,18435352,18430906,18439714,18426544,18430960,18435298,18426598,18439660,18430924,18435334,18426538,18439720,18435280,18430978,18439666,18426592]],[226,"F m -3 c","F 4/m -3 2/c","Fm-3c",524,"-F 4a 2 3","",31,[16484,3198,17014010,17017896,18426488,18439770,1428962,1425072,16320,3362,17013522,17018384,18426648,18439610,1429446,1424588,10816,8866,1427674,1426360,1545598,1544632,128740,127138,9352,10330,1426198,1427836,1544146,1546084,127300,128578,12064,7618,134524,121354,17131882,17136220,17009422,17022484,7636,12046,121348,134530,17136202,17131900,17022490,17009416,1551758,1538472,18549284,18553170,17127410,17140692,129884,125994,1551594,1538636,18548796,18553658,17127570,17140532,130368,125510,1546090,1544140,128596,127282,10324,9358,1427818,1426216,1544626,1545604,127120,128758,8872,10810,1426378,1427656,1547338,1542892,1433602,1420432,18430960,18435298,18544696,18557758,1542910,1547320,1420426,1433608,18435280,18430978,18557764,18544690,17140694,17127408,125996,129882,1538474,1551756,18553172,18549282,17140530,17127572,125508,130370,1538634,1551596,18553656,18548798,17135026,17133076,18551884,18550570,18433612,18432646,17016754,17015152,17133562,17134540,18550408,18552046,18432160,18434098,17015314,17016592,17136274,17131828,17022538,17009368,7672,12010,121408,134470,17131846,17136256,17009362,17022544,11992,7690,134476,121402,18439772,18426486,1425074,1428960,3200,16482,17017898,17014008,18439608,18426650,1424586,1429448,3360,16322,17018382,17013524,18434104,18432154,17016610,17015296,17134534,17133568,18552028,18550426,18432640,18433618,17015134,17016772,17133082,17135020,18550588,18551866,18435352,18430906,18557812,18544642,1542946,1547284,1420486,1433548,18430924,18435334,18544636,18557818,1547266,1542964,1433554,1420480]],[227,"F d -3 m","F 4_1/d -3 2/m","Fd-3m",526,"-F 4vw 2vw 3","2",31,[16484,3198,775535,779421,26339054,26352336,25698101,25694211,783957,770999,7410,12272,25689675,25702637,26348124,26343266,10816,8866,8572603,8571289,19201249,19200283,27645574,27643972,8571457,8572435,9022,10660,27643804,27645742,19200127,19201405,12064,7618,9228070,9214900,10105051,10109389,2306221,2319283,9219280,9223690,3250,16432,2314903,2310601,10113757,10100683,1551758,1538472,2310809,2314695,27638132,27651414,26997179,26993289,2319231,2306273,1542684,1547546,26988753,27001715,27647202,27642344,1546090,1544140,10107877,10106563,17902171,17901205,26346496,26344894,10106731,10107709,1544296,1545934,26344726,26346664,17901049,17902327,1547338,1542892,10763344,10750174,8569777,8574115,770947,784009,10754554,10758964,1538524,1551706,779629,775327,8578483,8565409,17140694,17127408,17899745,17903631,9214844,9228126,8573891,8570001,17908167,17895209,17131620,17136482,8565465,8578427,9223914,9219056,17135026,17133076,25696813,25695499,2313235,2312269,10757560,10755958,25695667,25696645,17133232,17134870,10755790,10757728,2312113,2313391,17136274,17131828,26352280,26339110,26993065,26997403,19194235,19207297,26343490,26347900,17127460,17140642,19202917,19198615,27001771,26988697,18439772,18426486,19198823,19202709,10750118,10763400,10109165,10105275,19207245,19194287,18430698,18435560,10100739,10113701,10759188,10754330,18434104,18432154,26995891,26994577,777961,776995,9222286,9220684,26994745,26995723,18432310,18433948,9220516,9222454,776839,778117,18435352,18430906,27651358,27638188,25693987,25698325,17895157,17908219,27642568,27646978,18426538,18439720,17903839,17899537,25702693,25689619]],[228,"F d -3 c","F 4_1/d -3 2/c","Fd-3c",528,"-F 4ud 2vw 3","2",31,[16484,3198,17781647,17785533,10750118,10763400,27115277,27111387,783957,770999,17013522,17018384,10100739,10113701,27765300,27760442,10816,8866,9989779,9988465,17902171,17901205,27763672,27762070,8571457,8572435,1426198,1427836,26344726,26346664,19318225,19319503,12064,7618,9346168,9332998,26993065,26997403,19312333,19325395,9219280,9223690,121348,134530,19202917,19198615,27119869,27106795,1551758,1538472,19316921,19320807,9214844,9228126,25580003,25576113,2319231,2306273,18548796,18553658,8565465,8578427,26230026,26225168,1546090,1544140,8690701,8689387,19201249,19200283,26228398,26226796,10106731,10107709,127120,128758,27643804,27645742,17782951,17784229,1547338,1542892,10645246,10632076,25693987,25698325,17777059,17790121,10754554,10758964,1420426,1433608,17903839,17899537,25584595,25571521,17140694,17127408,893633,897519,27638132,27651414,9991067,9987177,17908167,17895209,125508,130370,26988753,27001715,10641090,10636232,17135026,17133076,27113989,27112675,777961,776995,10639462,10637860,25695667,25696645,18550408,18552046,9220516,9222454,2194015,2195293,17136274,17131828,26234182,26221012,10105051,10109389,2188123,2201185,26343490,26347900,17009362,17022544,2314903,2310601,9995659,9982585,18439772,18426486,2192711,2196597,26339054,26352336,8691989,8688099,19207245,19194287,1424586,1429448,25689675,25702637,9342012,9337154,18434104,18432154,25578715,25577401,2313235,2312269,9340384,9338782,26994745,26995723,17015134,17016772,10755790,10757728,894937,896215,18435352,18430906,27769456,27756286,8569777,8574115,889045,902107,27642568,27646978,18544636,18557818,779629,775327,8696581,8683507]],[229,"I m -3 m","I 4/m -3 2/m","Im-3m",529,"-I 4 2 3","",31,[16484,3198,7898,11784,3200,16482,11786,7896,16320,3362,7410,12272,3360,16322,12270,7412,10816,8866,10498,9184,10324,9358,10642,9040,9352,10330,9022,10660,8872,10810,9202,10480,12064,7618,16426,3256,7672,12010,3310,16372,7636,12046,3250,16432,11992,7690,16378,3304,18557870,18544584,18549284,18553170,18544586,18557868,18553172,18549282,18557706,18544748,18548796,18553658,18544746,18557708,18553656,18548798,18552202,18550252,18551884,18550570,18551710,18550744,18552028,18550426,18550738,18551716,18550408,18552046,18550258,18552196,18550588,18551866,18553450,18549004,18557812,18544642,18549058,18553396,18544696,18557758,18549022,18553432,18544636,18557818,18553378,18549076,18557764,18544690]],[230,"I a -3 d","I 4_1/a -3 2/d","Ia-3d",530,"-I 4bd 2c 3","",31,[16484,3198,10695767,10699653,17127410,17140692,9400577,9396687,134418,121460,9278103,9282965,17009472,17022434,10818237,10813379,10816,8866,9399289,9397975,18433612,18432646,26287447,26285845,17015464,17016442,9279715,9281353,1426048,1427986,26404105,26405383,12064,7618,26293231,26280061,1542946,1547284,10691179,10704241,1424812,1429222,9273943,9287125,130090,125788,27710359,27697285,18557870,18544584,26402801,26406687,1420376,1433658,27705767,27701877,18439608,18426650,27819489,27824351,1538634,1551596,26289075,26284217,18552202,18550252,27704479,27703165,128422,127456,10816609,10815007,1544626,1545604,27821101,27822739,17133082,17135020,10697071,10698349,18553450,18549004,10822393,10809223,17013784,17018122,26398213,26411275,17131846,17136256,27815329,27828511,18435280,18430978,9405169,9392095]]]
+</script>
+  <script>
+    'use strict';
+    const SYSTEMS = [
+      { name: '三斜晶系', values: [4.2, 5.1, 5.8, 77, 104, 68], locks: {},
+        rule: '三条边长与三个夹角均可独立调整。', lattices: [['aP', '原始', '原始三斜']] },
+      { name: '单斜晶系', values: [4.5, 5.2, 6.2, 90, 111, 90], locks: {3: 90, 5: 90},
+        rule: 'α = γ = 90° · b 为唯一轴', lattices: [['mP', '原始', '原始单斜'], ['mC', '底心', '底心单斜']] },
+      { name: '正交晶系', values: [4, 5.2, 6.4, 90, 90, 90], locks: {3: 90, 4: 90, 5: 90},
+        rule: 'α = β = γ = 90°', lattices: [['oP', '原始', '原始正交'], ['oC', '底心', '底心正交'], ['oI', '体心', '体心正交'], ['oF', '面心', '面心正交']] },
+      { name: '四方晶系', values: [4.6, 4.6, 6.4, 90, 90, 90], locks: {1: '0', 3: 90, 4: 90, 5: 90},
+        rule: 'a = b · α = β = γ = 90°', lattices: [['tP', '原始', '原始四方'], ['tI', '体心', '体心四方']] },
+      { name: '三方晶系', values: [5, 5, 5, 74, 74, 74], locks: {1: '0', 2: '0', 4: '3', 5: '3'},
+        rule: 'a = b = c · α = β = γ', lattices: [['hR', '菱方', '菱方格子']] },
+      { name: '六方晶系', values: [4.3, 4.3, 6.5, 90, 90, 120], locks: {1: '0', 3: 90, 4: 90, 5: 120},
+        rule: 'a = b · α = β = 90° · γ = 120°', lattices: [['hP', '原始', '原始六方']] },
+      { name: '立方晶系', values: [5.4, 5.4, 5.4, 90, 90, 90], locks: {1: '0', 2: '0', 3: 90, 4: 90, 5: 90},
+        rule: 'a = b = c · α = β = γ = 90°', lattices: [['cP', '原始', '原始立方'], ['cI', '体心', '体心立方'], ['cF', '面心', '面心立方']] },
+    ];
+    const CENTERING = {
+      P: { label: '', shifts: [] },
+      C: { label: '底心', shifts: [[3, 3, 0]] },
+      I: { label: '体心', shifts: [[3, 3, 3]] },
+      F: { label: '面心', shifts: [[0, 3, 3], [3, 0, 3], [3, 3, 0]] },
+      R: { label: '菱方心', shifts: [[4, 2, 2], [2, 4, 4]] },
+    };
+    const DETAILS = {
+      P: '格点位于晶胞顶点',
+      C: '顶点与两相对 ab 面的中心',
+      I: '顶点与晶胞体心',
+      F: '顶点与六个面的中心',
+      R: '顶点与两个菱方心格点',
+    };
+    const SYMBOLS = ['a', 'b', 'c', 'α', 'β', 'γ'];
+    const AXIS_COLORS = ['#a53e32', '#177969', '#244f9b'];
+    const DEFAULT_EYE = [5.6, -8, 5.1];
+    const RAD = Math.PI / 180;
+    const el = id => document.getElementById(id);
+    const latticeMap = new Map();
+    const systemButtons = new Map();
+    const modelWorkspace = { mode: 'lattice', saved: new Map() };
+    const state = {
+      lattice: 'cF', free: false, rh: 'primitive', params: [],
+      repeat: [1, 1, 1], display: { points: true, edges: true, faces: true, axes: true },
+      perspective: false, spin: false, axis: null, zoom: 1, pan: [0, 0],
+    };
+    const pointEdit = {
+      active: false, tool: 'move', multi: false, saved: new Map(), current: null,
+      selected: new Set(), gesture: null,
+    };
+    const canvas = el('model');
+    const ctx = canvas.getContext('2d');
+    const tooltip = el('point-tip');
+    const numberFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 3, useGrouping: false });
+    let basis, mesh, displayMesh, camera, view, screenPoints = [];
+    let width = 1, height = 1, queuedFrame = 0, lastTime = 0;
+    let sizeScale = 1, fitExtent = 0;
+
+    const add = (a, b) => a.map((v, i) => v + b[i]);
+    const mul = (a, k) => a.map(v => v * k);
+    const dot = (a, b) => a.reduce((sum, v, i) => sum + v * b[i], 0);
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const norm = a => Math.hypot(...a);
+    const unit = a => mul(a, 1 / norm(a));
+    const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+    const system = () => latticeMap.get(state.lattice).system;
+    const hexRh = () => state.lattice === 'hR' && state.rh === 'hexagonal';
+    const constraintSystem = () => hexRh() ? SYSTEMS[5] : system();
+    const centeringKey = () => state.lattice === 'hR' && !hexRh() ? 'P' : state.lattice[1];
+    const centering = () => CENTERING[centeringKey()];
+    const readableNumber = value => Number(value.toPrecision(10)).toString();
+
+    const X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1];
+    const IDENTITY = [X, Y, Z];
+    const INVERSION = IDENTITY.map(row => mul(row, -1));
+    const OP_NAMES = { identity: '恒等', rotation: '旋转', mirror: '镜面反射', inversion: '中心反演', rotoinversion: '旋转反演' };
+    const symmetry = {
+      active: false, system: null, group: null, families: [], family: null, site: null, operation: null,
+      pivot: null, radius: 1, displayRadius: 1, probe: null, probeCoords: null, probeFit: 1, trace: [], frame: null,
+      progress: 0, playing: false, lastTime: null, speed: 1,
+      original: true, element: true, probeVisible: true, loop: false,
+    };
+    const neg = v => mul(v, -1);
+    const transpose = matrix => matrix[0].map((_, i) => matrix.map(row => row[i]));
+    const matVec = (matrix, vector) => matrix.map(row => dot(row, vector));
+    const matMul = (a, b) => transpose(transpose(b).map(column => matVec(a, column)));
+    const probeHandle = el('probe-handle');
+    const probeInputs = ['probe-u', 'probe-v', 'probe-w'].map(el);
+    let probeDrag = null;
+
+    function rotationMatrix(axis, degrees) {
+      const cosine = Math.cos(degrees * RAD);
+      const sine = Math.sin(degrees * RAD);
+      return transpose(IDENTITY.map(vector => add(add(mul(vector, cosine), mul(cross(axis, vector), sine)),
+        mul(axis, dot(axis, vector) * (1 - cosine)))));
+    }
+
+    // Generators are given in orthonormal crystal frames using the settings shown in the UI.
+    const halfX = rotationMatrix(X, 180), halfY = rotationMatrix(Y, 180);
+    const turn3 = rotationMatrix(Z, 120), turn4 = rotationMatrix(Z, 90), turn6 = rotationMatrix(Z, 60);
+    const mirrorX = halfX.map(neg), mirrorY = halfY.map(neg);
+    const roto3 = turn3.map(neg), roto4 = turn4.map(neg), roto6 = turn6.map(neg);
+    const diagonal3 = rotationMatrix(unit([1, 1, 1]), 120);
+    const POINT_GROUPS = [
+      [['1', []], ['-1', [INVERSION]]],
+      [['2', [halfY]], ['m', [mirrorY]], ['2/m', [halfY, INVERSION]]],
+      [['222', [halfX, halfY]], ['mm2', [mirrorX, mirrorY]], ['mmm', [halfX, halfY, INVERSION]]],
+      [['4', [turn4]], ['-4', [roto4]], ['4/m', [turn4, INVERSION]], ['422', [turn4, halfX]],
+        ['4mm', [turn4, mirrorX]], ['-42m', [roto4, halfX]], ['4/mmm', [turn4, halfX, INVERSION]]],
+      [['3', [turn3]], ['-3', [roto3]], ['32', [turn3, halfX]], ['3m', [turn3, mirrorX]],
+        ['-3m', [turn3, halfX, INVERSION]]],
+      [['6', [turn6]], ['-6', [roto6]], ['6/m', [turn6, INVERSION]], ['622', [turn6, halfX]],
+        ['6mm', [turn6, mirrorX]], ['-6m2', [roto6, mirrorX]], ['6/mmm', [turn6, halfX, INVERSION]]],
+      [['23', [diagonal3, halfX]], ['m-3', [diagonal3, halfX, INVERSION]], ['432', [turn4, diagonal3]],
+        ['-43m', [roto4, diagonal3]], ['m-3m', [turn4, diagonal3, INVERSION]]],
+    ].map(groups => groups.map(([id, generators]) => ({
+      id, label: id.replace(/-(\d)/g, '$1̅'), ops: groupClosure(generators),
+    })));
+
+    function groupClosure(generators) {
+      const key = matrix => matrix.flat().map(v => Math.round(v * 1e8)).join(',');
+      const matrices = [IDENTITY];
+      const seen = new Set([key(IDENTITY)]);
+      for (const matrix of matrices) {
+        for (const generator of generators) {
+          const product = matMul(generator, matrix);
+          const entry = key(product);
+          if (seen.has(entry)) continue;
+          seen.add(entry);
+          matrices.push(product);
+        }
+      }
+      return matrices.map((matrix, id) => ({ id, matrix, ...describeMatrix(matrix) }));
+    }
+
+    function describeMatrix(matrix) {
+      const improper = dot(matrix[0], cross(matrix[1], matrix[2])) < 0;
+      const [[xx, xy, xz], [yx, yy, yz], [zx, zy, zz]] = improper ? matrix.map(neg) : matrix;
+      let angle = Math.round(Math.acos(clamp((xx + yy + zz - 1) / 2, -1, 1)) / RAD);
+      if (angle === 0) return { kind: improper ? 'inversion' : 'identity', axis: null, angle };
+      let axis;
+      if (angle === 180) {
+        const columns = [[xx + 1, yx, zx], [xy, yy + 1, zy], [xz, yz, zz + 1]];
+        axis = unit(columns.sort((a, b) => norm(b) - norm(a))[0]);
+      } else {
+        axis = unit([zy - yz, xz - zx, yx - xy]);
+      }
+      if (axis.find(x => Math.abs(x) > 1e-7) < 0) {
+        axis = neg(axis);
+        if (angle !== 180) angle = -angle;
+      }
+      return { kind: improper ? (Math.abs(angle) === 180 ? 'mirror' : 'rotoinversion') : 'rotation', axis, angle };
+    }
+
+    function crystalFrame() {
+      return orientedFrame(basis.vectors, system() === SYSTEMS[1], state.lattice === 'hR' && !hexRh());
+    }
+
+    function orientedFrame([a, b, c], monoclinic, rhombohedral) {
+      if (monoclinic) {
+        const y = unit(b);
+        const z = unit(cross(a, y));
+        return [cross(y, z), y, z];
+      }
+      const z = unit(rhombohedral ? add(add(a, b), c) : c);
+      const xGuess = rhombohedral ? add(a, neg(b)) : a;
+      let y = cross(z, xGuess);
+      if (norm(y) < Number.EPSILON) y = cross(z, Math.abs(z[0]) > .95 ? Y : X);
+      y = unit(y);
+      return [cross(y, z), y, z];
+    }
+
+    function fractional(vector) {
+      const [a, b, c] = basis.vectors;
+      const rows = [cross(b, c), cross(c, a), cross(a, b)];
+      const determinant = dot(a, rows[0]);
+      return rows.map(row => dot(row, vector) / determinant);
+    }
+
+    function directionLabel(axis) {
+      const fractions = fractional(axis);
+      const largest = Math.max(...fractions.map(Math.abs));
+      for (let denominator = 1; denominator <= 4; denominator++) {
+        const relative = mul(fractions, denominator / largest);
+        const indices = relative.map(Math.round);
+        if (indices.every((x, i) => Math.abs(x - relative[i]) < 1e-6)) return '[' + indices.join(' ') + ']';
+      }
+      return '晶轴系 (' + mul(fractions, 1 / largest).map(value => value.toFixed(2)).join(', ') + ')';
+    }
+
+    function operationTitle(op) {
+      if (!op.worldAxis) return OP_NAMES[op.kind];
+      const direction = directionLabel(op.worldAxis);
+      if (op.kind === 'mirror') return '镜面反射 · 法向 ' + direction;
+      return OP_NAMES[op.kind] + ' ' + angleLabel(op.angle) + ' · ' + direction;
+    }
+
+    function angleLabel(angle) {
+      if (angle > 0 && angle < 180) return '+' + angle + '°';
+      return String(angle).replace('-', '−') + '°';
+    }
+
+    function formatFractional(coord) {
+      const fractions = ['0', '1/6', '1/3', '1/2', '2/3', '5/6'];
+      return '(' + coord.map(n => {
+        const integer = Math.floor(n / 6), remainder = n % 6;
+        return remainder === 0 ? integer : (integer ? integer + ' + ' : '') + fractions[remainder];
+      }).join(', ') + ')';
+    }
+
+    function isLatticeSite(coords, shifts) {
+      return shifts.some(shift => coords.every((value, i) => {
+        const delta = value - shift[i];
+        return Math.abs(delta - Math.round(delta)) < 1e-6;
+      }));
+    }
+
+    function latticeShifts() {
+      return [[0, 0, 0], ...centering().shifts].map(shift => mul(shift, 1 / 6));
+    }
+
+    function symmetryPivot(operations) {
+      const middle = state.repeat.map(n => n * 3);
+      const basisColumns = transpose(basis.vectors);
+      const center = { coord: middle, position: [0, 0, 0] };
+      if (state.free) return center;
+      const shifts = latticeShifts();
+      const frameColumns = transpose(symmetry.frame);
+      const isFixedPoint = coord => {
+        const world = matVec(basisColumns, mul(coord, 1 / 6));
+        const local = matVec(symmetry.frame, world);
+        // The shift p − Qp must be a lattice translation for each operation about p.
+        return operations.every(op => {
+          const rotated = matVec(frameColumns, matVec(op.matrix, local));
+          return isLatticeSite(fractional(add(world, neg(rotated))), shifts);
+        });
+      };
+      if (isFixedPoint(middle)) return center;
+      const nearest = mesh.points.reduce((best, point) =>
+        norm(point.position) < norm(best.position) - 1e-9 ? point : best);
+      const [u, v] = nearest.coord;
+      const coord = [u, v, middle[2]];
+      if (isFixedPoint(coord)) {
+        return { coord, position: matVec(basisColumns, mul(add(coord, neg(middle)), 1 / 6)) };
+      }
+      return nearest;
+    }
+
+    function clearElementSelection() {
+      symmetry.family = null;
+      symmetry.site = null;
+      symmetry.operation = null;
+    }
+
+    function probeFractional(relative) {
+      return add(mul(symmetry.pivot.coord, 1 / 6), fractional(relative));
+    }
+
+    function defaultProbeCoordinates() {
+      const relative = mul(matVec(transpose(symmetry.frame), [.35, .21, .33]), symmetry.radius);
+      return probeFractional(relative);
+    }
+
+    const probeNumber = value => Number(value.toPrecision(7)).toString();
+
+    function syncProbeInputs(active = null) {
+      el('probe-error').hidden = true;
+      for (const [i, input] of probeInputs.entries()) {
+        input.removeAttribute('aria-invalid');
+        if (input !== active) input.value = probeNumber(symmetry.probeCoords[i]);
+      }
+    }
+
+    function setProbePosition(coords, { active = null, fit = true } = {}) {
+      if (!coords.every(Number.isFinite)) return false;
+      const relativeCoords = add(coords, mul(symmetry.pivot.coord, -1 / 6));
+      const position = matVec(transpose(basis.vectors), relativeCoords);
+      if (!Number.isFinite(norm(position) * 8)) return false;
+      symmetry.probeCoords = coords;
+      symmetry.probe = position;
+      if (fit) symmetry.probeFit = norm(position);
+      syncProbeInputs(active);
+      return true;
+    }
+
+    function updateProbeTrace() {
+      symmetry.trace = Array.from({ length: 37 }, (_, i) => symmetryTransform(i / 36)(symmetry.probe));
+      const target = probeFractional(symmetry.trace.at(-1));
+      el('probe-target').textContent = '(' + target.map(value =>
+        Math.abs(value) < 1e-12 ? '0' : probeNumber(value)).join(', ') + ')';
+    }
+
+    function editProbePosition(coords, options) {
+      if (!setProbePosition(coords, options)) return false;
+      updateProbeTrace();
+      seekSymmetry(symmetry.progress);
+      return true;
+    }
+
+    function refreshSymmetry() {
+      if (!symmetry.active) return;
+      const current = system();
+      const groups = POINT_GROUPS[SYSTEMS.indexOf(current)];
+      if (symmetry.system !== current) {
+        symmetry.system = current;
+        const selected = groups.at(-1);
+        el('point-group').replaceChildren(...groups.map(group =>
+          new Option(group.label + (group === selected ? ' · 最高对称' : ''), group.id)));
+        el('point-group').value = selected.id;
+        el('symmetry-system').textContent = current.name;
+        symmetry.group = selected;
+        clearElementSelection();
+      }
+      symmetry.frame = crystalFrame();
+      symmetry.pivot = symmetryPivot(groups.at(-1).ops);
+      symmetry.radius = Math.max(...mesh.points.map(point => norm(add(point.position, neg(symmetry.pivot.position)))));
+      symmetry.displayRadius = Math.max(symmetry.radius, ...displayMesh.points.map(point =>
+        norm(add(point.position, neg(symmetry.pivot.position)))));
+      if (!symmetry.probeCoords || !setProbePosition(symmetry.probeCoords)) {
+        setProbePosition(defaultProbeCoordinates());
+      }
+      el('symmetry-pivot').textContent = '固定点 O 的晶胞分数坐标 ' + formatFractional(symmetry.pivot.coord);
+      el('symmetry-note').classList.toggle('warning', state.free || displayMesh.moved > 0);
+      el('symmetry-note').textContent = displayMesh.moved
+        ? '已对移动后的格点应用所选操作，匹配结果以参考周期格点为准。'
+        : state.free
+        ? '自由变形模式演示所选晶系的理想操作，变换后格点可能偏离当前周期格点。'
+        : '晶胞边界可随操作移动。变换后落到显示范围外的格点，仍计入周期格点匹配。';
+      refreshElements();
+    }
+
+    const ELEMENT_KINDS = ['rotation', 'rotoinversion', 'mirror', 'inversion', 'identity'];
+
+    function elementFamilies(operations, frame) {
+      const bySite = new Map();
+      const world = transpose(frame);
+      for (const op of operations) {
+        const order = op.kind === 'rotation' || op.kind === 'rotoinversion' ? Math.round(360 / Math.abs(op.angle)) : 0;
+        const direction = op.axis?.map(value => Math.round(value * 1e7)).join(',') ?? '';
+        const key = [op.kind, op.kind === 'rotoinversion' ? order : '', direction].join(':');
+        if (!bySite.has(key)) {
+          bySite.set(key, { key, kind: op.kind, order, localAxis: op.axis, axis: op.axis && matVec(world, op.axis), ops: [] });
+        }
+        const site = bySite.get(key);
+        // A half-turn about a fourfold line belongs to that line's operation list.
+        site.order = Math.max(site.order, order);
+        site.ops.push({ ...op, worldAxis: site.axis });
+      }
+
+      const families = new Map();
+      for (const site of bySite.values()) {
+        const familyKey = site.kind + (site.order ? '-' + site.order : '');
+        if (!families.has(familyKey)) {
+          families.set(familyKey, { key: familyKey, kind: site.kind, order: site.order, sites: [] });
+        }
+        site.ops.sort((a, b) => Math.abs(a.angle) - Math.abs(b.angle) || b.angle - a.angle);
+        families.get(familyKey).sites.push(site);
+      }
+      const list = [...families.values()];
+      for (const family of list) {
+        family.sites.sort((a, b) => {
+          if (!a.localAxis) return 0;
+          for (let i = 0; i < 3; i++) {
+            const difference = b.localAxis[i] - a.localAxis[i];
+            if (Math.abs(difference) > 1e-7) return difference;
+          }
+          return 0;
+        });
+        for (const [index, site] of family.sites.entries()) {
+          site.symbol = site.axis ? (family.kind === 'mirror' ? 'M' : 'A') + (index + 1) : 'O';
+          site.description = site.axis ? (family.kind === 'mirror' ? '法向 ' : '') + directionLabel(site.axis) : '固定点 O';
+        }
+      }
+      return list.sort((a, b) => ELEMENT_KINDS.indexOf(a.kind) - ELEMENT_KINDS.indexOf(b.kind) || b.order - a.order);
+    }
+
+    function familyLabel(family) {
+      const count = family.sites.length;
+      if (family.kind === 'identity') return '恒等操作';
+      if (family.kind === 'inversion') return '反演中心（1 个）';
+      if (family.kind === 'mirror') return '镜面（' + count + ' 面）';
+      return family.order + ' 次' + OP_NAMES[family.kind] + '轴（' + count + ' 条）';
+    }
+
+    function refreshElements() {
+      symmetry.families = elementFamilies(symmetry.group.ops, symmetry.frame);
+      const select = el('symmetry-element');
+      select.replaceChildren(...symmetry.families.map(family => new Option(familyLabel(family), family.key)));
+      el('symmetry-count').textContent = symmetry.group.ops.length + ' 个操作';
+      selectElementFamily(symmetry.families.find(family => family.key === symmetry.family?.key) ?? symmetry.families[0]);
+    }
+
+    function symmetryButton(buttonClass, label, action) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = buttonClass;
+      button.textContent = label;
+      button.addEventListener('click', action);
+      return button;
+    }
+
+    function selectElementFamily(family) {
+      symmetry.family = family;
+      el('symmetry-element').value = family.key;
+      el('element-view-label').textContent = familyLabel(family);
+      const hasLocation = family.kind !== 'identity';
+      el('symmetry-location').hidden = !hasLocation;
+      el('site-label').textContent = family.kind === 'mirror' ? '镜面位置' : family.order ? '轴线方向' : '固定点';
+      const siteButtons = [];
+      const markers = [];
+      for (const site of family.sites) {
+        if (!hasLocation) break;
+        const button = symmetryButton('symmetry-choice', site.description, () => selectElementSite(site));
+        if (site.axis) {
+          const index = document.createElement('b');
+          index.textContent = site.symbol;
+          button.prepend(index);
+          site.marker = symmetryButton('element-marker', site.symbol, () => selectElementSite(site));
+          site.marker.setAttribute('aria-label', site.symbol + ' ' + site.description);
+          site.marker.title = site.description;
+          markers.push(site.marker);
+        }
+        site.button = button;
+        siteButtons.push(button);
+      }
+      el('symmetry-sites').replaceChildren(...siteButtons);
+      el('symmetry-markers').replaceChildren(...markers);
+      const site = family.sites.find(item => item.key === symmetry.site?.key) ??
+        family.sites.find(item => item.localAxis?.[2] > .999999) ?? family.sites[0];
+      selectElementSite(site);
+    }
+
+    function selectElementSite(site) {
+      symmetry.site = site;
+      for (const item of symmetry.family.sites) {
+        item.button?.setAttribute('aria-pressed', item === site);
+        item.marker?.setAttribute('aria-pressed', item === site);
+      }
+      el('move-label').textContent = site.kind === 'rotation' || site.kind === 'rotoinversion' ? '可选转角' : '可执行操作';
+      el('symmetry-operations').replaceChildren(...site.ops.map(op => {
+        const label = site.order ? angleLabel(op.angle) + (site.kind === 'rotoinversion' ? ' 后反演' : '') : OP_NAMES[op.kind];
+        op.button = symmetryButton('symmetry-choice', label, () => selectOperation(op));
+        return op.button;
+      }));
+      selectOperation(site.ops.find(op => op.id === symmetry.operation?.id) ?? site.ops[0]);
+    }
+
+    function selectOperation(op) {
+      symmetry.operation = op;
+      for (const item of symmetry.site.ops) item.button.setAttribute('aria-pressed', item === op);
+      el('operation-name').textContent = operationTitle(op);
+      el('operation-description').textContent = {
+        identity: '保持各点的坐标。',
+        rotation: '绕过 O 的轴旋转，角度正负遵循右手定则。',
+        mirror: '各点沿镜面法线移动，终点与起点分居镜面两侧且到镜面等距。',
+        inversion: '各点沿直线穿过固定点 O，终点与起点分居 O 两侧且到 O 等距。',
+        rotoinversion: '绕轴旋转至指定角度，再以 O 为中心反演。',
+      }[op.kind];
+      const shifts = latticeShifts();
+      const origin = mul(symmetry.pivot.coord, 1 / 6);
+      const transform = symmetryTransform(1);
+      updateProbeTrace();
+      const matches = displayMesh.points.filter(point => {
+        const result = add(origin, fractional(transform(add(point.position, neg(symmetry.pivot.position)))));
+        return isLatticeSite(result, shifts);
+      }).length;
+      el('symmetry-match').textContent = matches + ' / ' + mesh.points.length;
+      seekSymmetry(0);
+    }
+
+    function symmetryTransform(t) {
+      const op = symmetry.operation;
+      switch (op.kind) {
+        case 'rotation': {
+          const matrix = rotationMatrix(op.worldAxis, t * op.angle);
+          return v => matVec(matrix, v);
+        }
+        case 'mirror': return v => add(v, mul(op.worldAxis, -2 * t * dot(v, op.worldAxis)));
+        case 'inversion': return v => mul(v, 1 - 2 * t);
+        case 'rotoinversion': {
+          // Separate rotation and inversion so the fixed elements are visible in each phase.
+          const angle = op.angle * Math.min(t / .6, 1);
+          const factor = t <= .6 ? 1 : 1 - 2 * (t - .6) / .4;
+          const matrix = rotationMatrix(op.worldAxis, angle).map(row => mul(row, factor));
+          return v => matVec(matrix, v);
+        }
+        default: return v => v;
+      }
+    }
+
+    function updateTimeline() {
+      const percent = Math.round(symmetry.progress * 100);
+      el('symmetry-progress').value = percent;
+      el('symmetry-percent').value = percent + '%';
+      el('symmetry-play').textContent = symmetry.playing ? '暂停演示' : symmetry.progress >= 1 ? '重播演示' : '播放演示';
+    }
+
+    function seekSymmetry(progress) {
+      symmetry.playing = false;
+      symmetry.lastTime = null;
+      symmetry.progress = progress;
+      updateTimeline();
+      hideTooltip();
+      requestDraw();
+    }
+
+    function advanceSymmetry(time) {
+      if (!symmetry.playing) return;
+      if (symmetry.lastTime !== null) {
+        symmetry.progress += Math.min(time - symmetry.lastTime, 100) * symmetry.speed / 1800;
+        if (symmetry.progress >= 1) {
+          symmetry.progress = symmetry.loop ? symmetry.progress % 1 : 1;
+          symmetry.playing = symmetry.loop;
+        }
+      }
+      symmetry.lastTime = time;
+      updateTimeline();
+      if (symmetry.playing) requestDraw();
+    }
+
+    function toggleSymmetry(active) {
+      if (active && pointEdit.active) togglePointEdit(false);
+      symmetry.active = active;
+      el('symmetry-toggle').setAttribute('aria-pressed', active);
+      el('symmetry-toggle').textContent = active ? '返回晶胞参数' : '点对称演示';
+      for (const id of ['symmetry-panel', 'symmetry-timeline', 'symmetry-legend', 'element-view-label']) el(id).hidden = !active;
+      el('symmetry-markers').hidden = !active || !symmetry.element;
+      if (!active) probeHandle.hidden = true;
+      updateInteractionMode();
+      el('scene').classList.toggle('symmetry-active', active);
+      state.pan = [0, 0];
+      state.zoom = 1;
+      setSpin(false);
+      seekSymmetry(0);
+      if (active) refreshSymmetry();
+    }
+
+    function updateInteractionMode() {
+      const {active, tool} = pointEdit;
+      const action = groupLab.active ? '拖动旋转' : symmetry.active ? '拖动 P 移点 · 拖动空白旋转' : active ?
+        (tool === 'pin' ? '点击格点切换固定状态' : '拖动格点 · 拖动空白旋转') : '拖动旋转';
+      el('gestures').textContent = action + ' · 滚轮缩放 · Shift + 拖动平移 · 双指缩放和平移 · 方向键旋转';
+      el('cell-settings').hidden = groupLab.active || active || symmetry.active;
+      el('legend').hidden = groupLab.active || active || symmetry.active || !state.display.points;
+    }
+
+    function togglePointEdit(active) {
+      if (active && symmetry.active) toggleSymmetry(false);
+      pointEdit.active = active;
+      pointEdit.gesture = null;
+      canvas.classList.remove('node-hover', 'pin-hover', 'node-dragging');
+      el('scene').classList.toggle('edit-active', active);
+      el('edit-toggle').setAttribute('aria-pressed', active);
+      el('edit-toggle').textContent = active ? '退出拖点' : '拖点变形';
+      for (const id of ['edit-toolbar', 'edit-panel', 'edit-legend']) el(id).hidden = !active;
+      setSpin(false);
+      updateInteractionMode();
+      updateStats();
+      hideTooltip();
+      requestDraw();
+    }
+
+    function selectEditTool(tool) {
+      pointEdit.tool = tool;
+      el('edit-move').setAttribute('aria-pressed', tool === 'move');
+      el('edit-pin').setAttribute('aria-pressed', tool === 'pin');
+      el('edit-help').textContent = tool === 'pin' ? '点击格点以固定，再点一次解除固定。固定点留在当前位置。' :
+        '拖动单个格点，或开启「多选」后逐个点击，再拖动任一选中点。拖动沿当前视图平面进行。';
+      updateInteractionMode();
+    }
+
+    function updateEditReadouts() {
+      const {pins, offsets} = pointEdit.current;
+      const selected = pointEdit.selected.size;
+      const visiblePins = [...pins].filter(key => mesh.byKey.has(key)).length;
+      el('edit-selected').textContent = selected;
+      el('edit-fixed').textContent = visiblePins;
+      el('edit-moved').textContent = displayMesh.moved;
+      el('edit-pin-selection').disabled = selected === 0;
+      el('edit-reset-selection').disabled = ![...pointEdit.selected].some(key => offsets.has(key));
+      el('edit-clear-selection').disabled = selected === 0;
+      el('edit-unpin').disabled = pins.size === 0;
+      el('edit-reset').disabled = offsets.size === 0;
+    }
+
+    function attachPointEdits() {
+      const name = modelWorkspace.mode + ':' + state.lattice + ':' + state.rh;
+      if (!pointEdit.saved.has(name)) pointEdit.saved.set(name, { pins: new Set(), offsets: new Map() });
+      const edits = pointEdit.saved.get(name);
+      if (pointEdit.current !== edits) {
+        pointEdit.current = edits;
+        pointEdit.selected.clear();
+        pointEdit.gesture = null;
+      }
+      for (const key of pointEdit.selected) {
+        if (!mesh.byKey.has(key)) pointEdit.selected.delete(key);
+      }
+      updateEditedGeometry();
+    }
+
+    function updateEditedGeometry() {
+      const {offsets} = pointEdit.current;
+      const moved = mesh.points.filter(node => offsets.has(node.key));
+      displayMesh = mesh;
+      if (moved.length) {
+        const axes = transpose(basis.vectors);
+        const points = mesh.points.map(node => offsets.has(node.key) ?
+          { ...node, position: add(node.position, matVec(axes, offsets.get(node.key))) } : node);
+        const byKey = new Map(points.map(node => [node.key, node]));
+        const positionFor = key => byKey.get(key).position;
+        const linksChanged = moved.some(node => node.type === '顶点');
+        const edges = linksChanged ? mesh.edges.map(edge => ({ ...edge, ends: edge.keys.map(positionFor) })) : mesh.edges;
+        const faces = linksChanged ? mesh.panels.flatMap(panel => {
+          const corners = panel.keys.map(positionFor);
+          if (!panel.keys.some(key => offsets.has(key))) return { ...panel, points: corners };
+          // Split displaced quads so the surface has a defined shape even when its corners are no longer coplanar.
+          return [[0, 1, 2], [0, 2, 3]].map(indices => {
+            const points = indices.map(i => corners[i]);
+            const [a, b, c] = points;
+            const crossProduct = cross(add(b, neg(a)), add(c, neg(a)));
+            const normal = norm(crossProduct) > 1e-12 ? mul(unit(crossProduct), panel.side) : panel.normal;
+            return { ...panel, points, normal };
+          });
+        }) : mesh.faces;
+        const radius = Math.max(mesh.radius, ...points.map(node => norm(node.position)));
+        displayMesh = { ...mesh, points, byKey, edges, faces, radius, moved: moved.length };
+      }
+      updateEditReadouts();
+      updateStats();
+    }
+
+    function restorePointPositions(keys) {
+      const {offsets} = pointEdit.current;
+      for (const key of keys) offsets.delete(key);
+      updateEditedGeometry();
+      hideTooltip();
+      requestDraw();
+    }
+
+    function rhombohedralToHexagonal([a, , , alpha]) {
+      const theta = alpha * RAD;
+      const h = 2 * a * Math.sin(theta / 2);
+      const c = a * Math.sqrt(3 * (1 + 2 * Math.cos(theta)));
+      return [h, h, c, 90, 90, 120];
+    }
+
+    function hexagonalToRhombohedral([a, , c]) {
+      const length = Math.hypot(Math.sqrt(3) * a, c) / 3;
+      const alpha = 2 * Math.asin(clamp(a / (2 * length), 0, 1)) / RAD;
+      return [length, length, length, alpha, alpha, alpha];
+    }
+
+    function constrained(params) {
+      const result = params.slice();
+      if (!state.free) {
+        for (const [i, lock] of Object.entries(constraintSystem().locks)) {
+          result[i] = typeof lock === 'string' ? result[Number(lock)] : lock;
+        }
+      }
+      return result;
+    }
+
+    function cellBasis(params) {
+      const [a, b, c, alpha, beta, gamma] = params;
+      const edges = [a, b, c];
+      const angles = [alpha, beta, gamma];
+      if (!edges.every(x => Number.isFinite(x) && x > 0)) {
+        return { error: '请输入大于 0 的有限边长。', fields: [0, 1, 2] };
+      }
+      if (!angles.every(x => Number.isFinite(x) && x > 0 && x < 180)) {
+        return { error: '夹角必须大于 0° 且小于 180°。', fields: [3, 4, 5] };
+      }
+      const halfSum = (alpha + beta + gamma) / 2;
+      if (halfSum >= 180 || angles.some(angle => angle >= halfSum)) {
+        return { error: '这组夹角无法构成有体积的晶胞。每个角须小于另外两角之和，三个角之和须小于 360°。', fields: [3, 4, 5] };
+      }
+      const g = gamma * RAD;
+      const cosD = x => x === 90 ? 0 : Math.cos(x * RAD);
+      const volumeFactor = 2 * Math.sqrt([halfSum, ...angles.map(angle => halfSum - angle)]
+        .reduce((product, angle) => product * Math.sin(angle * RAD), 1));
+      const volume = Math.exp(Math.log(a) + Math.log(b) + Math.log(c) + Math.log(volumeFactor));
+      const scale = Math.max(...edges);
+      const vectors = [
+        [a / scale, 0, 0],
+        mul([cosD(gamma), Math.sin(g), 0], b / scale),
+        mul([cosD(beta), (cosD(alpha) - cosD(beta) * cosD(gamma)) / Math.sin(g), volumeFactor / Math.sin(g)], c / scale),
+      ];
+      if (!Number.isFinite(volume) || volume <= 0 || vectors.some(v => !Number.isFinite(norm(v)) || norm(v) < 1e-12)) {
+        return { error: '这组尺寸超出可绘制范围，请减小边长差异或避开极端夹角。', fields: [0, 1, 2, 3, 4, 5] };
+      }
+      return { vectors, volume, scale };
+    }
+
+    const controls = SYMBOLS.map((symbol, i) => {
+      const field = document.createElement('div');
+      field.className = 'parameter';
+      field.innerHTML = '<label for="param-' + i + '"><b>' + symbol + '</b><span>' + (i < 3 ? 'Å' : '°') +
+        '</span><small></small></label><input type="number" step="any" id="param-' + i +
+        '"><input type="range" step="' + (i < 3 ? '.05' : '.1') + '" aria-label="' + symbol + ' 滑块">';
+      el('parameters').append(field);
+      const [input, slider] = field.querySelectorAll('input');
+      const tag = field.querySelector('small');
+      input.setAttribute('aria-describedby', 'constraint error');
+      input.addEventListener('input', () => setParam(i, input.valueAsNumber, false));
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') input.blur();
+        if (event.key === 'Escape') {
+          refreshControls();
+          clearError();
+          input.blur();
+        }
+      });
+      slider.addEventListener('input', () => setParam(i, slider.valueAsNumber, true));
+      return { input, slider, tag };
+    });
+
+    function refreshControls(active = -1, bounds = true) {
+      for (const [i, {input, slider, tag}] of controls.entries()) {
+        const lock = state.free ? undefined : constraintSystem().locks[i];
+        input.disabled = slider.disabled = lock !== undefined;
+        tag.textContent = typeof lock === 'string' ? '同 ' + SYMBOLS[lock] : lock !== undefined ? '固定' : '';
+        if (i !== active) input.value = readableNumber(state.params[i]);
+        if (bounds) {
+          slider.min = i < 3 ? '0.05' : '0.1';
+          slider.max = i < 3 ? Math.max(12, Math.ceil(state.params[i] * 1.5)) :
+            state.lattice === 'hR' && !hexRh() && !state.free ? '119.9' : '179.9';
+        }
+        slider.value = state.params[i];
+      }
+      el('locked').setAttribute('aria-pressed', !state.free);
+      el('free').setAttribute('aria-pressed', state.free);
+      el('constraint').textContent = state.free ? '六个参数独立调整，格点分数坐标保持不变。' : constraintSystem().rule;
+      el('rh-setting').hidden = state.lattice !== 'hR';
+      el('rh-cell').value = state.rh;
+      el('rh-cell').disabled = state.free;
+      el('rh-cell').title = state.free ? '切回晶系约束后可转换晶胞设置' : '';
+    }
+
+    function clearError() {
+      el('error').hidden = true;
+      for (const {input} of controls) input.removeAttribute('aria-invalid');
+    }
+
+    function showError(message, fields) {
+      clearError();
+      el('error').textContent = message;
+      el('error').hidden = false;
+      for (const i of fields) {
+        if (!controls[i].input.disabled) controls[i].input.setAttribute('aria-invalid', 'true');
+      }
+    }
+
+    function setParam(i, value, fromSlider) {
+      const params = state.params.slice();
+      params[i] = value;
+      const next = constrained(params);
+      const geometry = cellBasis(next);
+      if (geometry.error) {
+        showError(geometry.error, [i]);
+        if (fromSlider) controls[i].slider.value = state.params[i];
+        return;
+      }
+      clearError();
+      state.params = next;
+      basis = geometry;
+      refreshControls(fromSlider ? -1 : i, !fromSlider);
+      buildMesh();
+    }
+
+    function applyParams(next) {
+      const params = constrained(next);
+      const geometry = cellBasis(params);
+      if (geometry.error) return geometry;
+      state.params = params;
+      basis = geometry;
+      clearError();
+      refreshControls();
+      buildMesh();
+      return geometry;
+    }
+
+    function defaults() {
+      const params = system().values;
+      return hexRh() ? rhombohedralToHexagonal(params) : params;
+    }
+
+    function setMode(free) {
+      if (state.free === free) return;
+      state.free = free;
+      const result = applyParams(state.params);
+      if (result.error) {
+        state.free = !free;
+        showError('当前参数无法应用晶系约束。请先调整夹角或恢复默认参数。', result.fields);
+      }
+      updateHeading();
+    }
+
+    function updateHeading() {
+      const {name} = latticeMap.get(state.lattice);
+      const suffix = state.lattice === 'hR' ? (hexRh() ? ' · 六方轴晶胞' : ' · 菱方原胞') : '';
+      const isSystem = modelWorkspace.mode === 'system';
+      const title = isSystem ? system().name : name;
+      el('model-code').textContent = isSystem ? '晶系' : state.lattice;
+      el('model-name').textContent = title;
+      el('model-detail').textContent = isSystem
+        ? '代表晶胞' + suffix + ' · ' + (state.free ? '自由变形' : constraintSystem().rule)
+        : system().name + suffix + ' · ' + (state.free ? '自由变形' : DETAILS[centeringKey()]);
+      el('center-label').textContent = centering().label;
+      el('center-legend').hidden = centering().shifts.length === 0;
+      canvas.setAttribute('aria-label', title + '的交互式三维模型');
+    }
+
+    function syncModelSelection() {
+      for (const [key, {button}] of latticeMap) button.setAttribute('aria-pressed', key === state.lattice);
+      for (const [definition, button] of systemButtons) button.setAttribute('aria-pressed', definition === system());
+      updateHeading();
+    }
+
+    function selectLattice(code, force = false) {
+      if (code === state.lattice && basis && !force) return;
+      state.lattice = code;
+      state.free = false;
+      state.rh = 'primitive';
+      applyParams(defaults());
+      syncModelSelection();
+      resetView();
+    }
+
+    for (const definition of SYSTEMS.slice().reverse()) {
+      const systemButton = document.createElement('button');
+      systemButton.type = 'button';
+      systemButton.className = 'system-entry';
+      const systemTitle = document.createElement('strong');
+      systemTitle.textContent = definition.name;
+      const rule = document.createElement('small');
+      rule.textContent = definition.rule;
+      systemButton.append(systemTitle, rule);
+      systemButton.addEventListener('click', () => selectLattice(definition.lattices[0][0]));
+      el('system-catalog').append(systemButton);
+      systemButtons.set(definition, systemButton);
+
+      const group = document.createElement('section');
+      group.className = 'family';
+      const heading = document.createElement('h3');
+      heading.textContent = definition.name;
+      const options = document.createElement('div');
+      options.className = 'family-options';
+      for (const [code, label, name] of definition.lattices) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'lattice-button';
+        button.innerHTML = '<b>' + code + '</b><span>' + label + '</span>';
+        button.setAttribute('aria-label', code + ' ' + name);
+        button.addEventListener('click', () => selectLattice(code));
+        options.append(button);
+        latticeMap.set(code, { name, system: definition, button });
+      }
+      group.append(heading, options);
+      el('catalog').append(group);
+    }
+
+    function updateStats() {
+      const volume = basis.volume;
+      el('volume').textContent = volume >= .001 && volume < 1e7 ? numberFormat.format(volume) : volume.toExponential(3);
+      el('volume').title = readableNumber(volume) + ' Å³';
+      el('effective').textContent = 1 + centering().shifts.length;
+      el('volume-label').textContent = displayMesh.moved ? '参考晶胞体积' : '晶胞体积';
+      el('visible-count').textContent = state.display.points || pointEdit.active ? mesh.points.length : '0';
+    }
+
+    // Fractional coordinates use integer sixths to join shared faces exactly.
+    function buildMesh() {
+      const [nx, ny, nz] = state.repeat;
+      const repeat = state.repeat.map(x => x * 6);
+      const middle = repeat.map(x => x / 2);
+      const xyz = coords => basis.vectors.reduce((sum, axis, i) => add(sum, mul(axis, (coords[i] - middle[i]) / 6)), [0, 0, 0]);
+      const pointKey = coords => coords.join(',');
+      const shifted = (coords, axis, step) => coords.map((x, i) => i === axis ? x + step : x);
+      const vertex = new Map();
+      const edges = [];
+      for (let x = 0; x <= nx; x++) {
+        for (let y = 0; y <= ny; y++) {
+          for (let z = 0; z <= nz; z++) {
+            const coord = [x * 6, y * 6, z * 6];
+            const position = xyz(coord);
+            const key = pointKey(coord);
+            vertex.set(key, { key, coord, position, type: '顶点' });
+            for (let axis = 0; axis < 3; axis++) {
+              if (coord[axis] >= repeat[axis]) continue;
+              const other = shifted(coord, axis, 6);
+              const boundary = repeat.map((limit, i) => {
+                if (i === axis || (coord[i] > 0 && coord[i] < limit)) return 0;
+                return coord[i] === 0 ? -1 : 1;
+              });
+              edges.push({ keys: [key, pointKey(other)], ends: [position, xyz(other)], boundary });
+            }
+          }
+        }
+      }
+      const type = centering().label;
+      for (const shift of centering().shifts) {
+        for (let x = 0; x <= nx; x++) {
+          for (let y = 0; y <= ny; y++) {
+            for (let z = 0; z <= nz; z++) {
+              const coord = add([x * 6, y * 6, z * 6], shift);
+              if (coord.some((n, i) => n > repeat[i])) continue;
+            const key = pointKey(coord);
+            vertex.set(key, { key, coord, position: xyz(coord), type });
+            }
+          }
+        }
+      }
+      const faces = [];
+      const panels = [];
+      const normals = basis.vectors.map((_, i) => unit(cross(basis.vectors[(i + 1) % 3], basis.vectors[(i + 2) % 3])));
+      for (let i = 0; i < 3; i++) {
+        const u = (i + 1) % 3;
+        const v = (i + 2) % 3;
+        for (const side of [-1, 1]) {
+          const origin = [0, 0, 0];
+          origin[i] = side === 1 ? repeat[i] : 0;
+          const corners = (start, length, height) => [start, shifted(start, u, length),
+            shifted(shifted(start, u, length), v, height), shifted(start, v, height)];
+          const normal = mul(normals[i], side);
+          faces.push({ points: corners(origin, repeat[u], repeat[v]).map(xyz), normal, index: i, side });
+          for (let j = 0; j < repeat[u]; j += 6) {
+            for (let k = 0; k < repeat[v]; k += 6) {
+              const start = shifted(shifted(origin, u, j), v, k);
+              panels.push({ keys: corners(start, 6, 6).map(pointKey), normal, index: i, side });
+            }
+          }
+        }
+      }
+      const points = [...vertex.values()];
+      const radius = Math.max(...points.map(point => norm(point.position)));
+      const extent = Math.log(basis.scale) + Math.log(radius);
+      mesh = { points, byKey: vertex, edges, faces, panels, normals, radius, extent, origin: xyz([0, 0, 0]), moved: 0 };
+      attachPointEdits();
+      if (state.axis !== null) pointAlong(state.axis);
+      refreshSymmetry();
+      hideTooltip();
+      requestDraw();
+    }
+
+    function look(eye) {
+      const toward = unit(eye);
+      const worldUp = Math.abs(toward[2]) > .96 ? [0, 1, 0] : [0, 0, 1];
+      const right = unit(cross(worldUp, toward));
+      camera = [right, cross(toward, right), toward];
+    }
+
+    function pointAlong(axis) {
+      state.axis = axis;
+      look((groupLab.active ? groupLab.basis : basis).vectors[axis]);
+      updateViewLabel();
+    }
+
+    function updateViewLabel(label = '自由视角') {
+      el('view-label').textContent = state.axis === null ? label : '沿 ' + SYMBOLS[state.axis] + ' 轴观察';
+      for (const button of document.querySelectorAll('[data-axis]')) {
+        button.setAttribute('aria-pressed', Number(button.dataset.axis) === state.axis);
+      }
+    }
+
+    function resetView() {
+      setSpin(false);
+      state.axis = null;
+      state.zoom = 1;
+      state.pan = [0, 0];
+      if (!groupLab.active) {
+        fitExtent = mesh.extent + Math.log(displayMesh.radius / mesh.radius);
+        if (symmetry.active) symmetry.probeFit = norm(symmetry.probe);
+      }
+      look(DEFAULT_EYE);
+      updateViewLabel('斜视');
+      hideTooltip();
+      requestDraw();
+    }
+
+    function orbit(dx, dy) {
+      if (dx === 0 && dy === 0) return;
+      const [r, u, z] = camera;
+      const cosX = Math.cos(dx), sinX = Math.sin(dx);
+      const cosY = Math.cos(dy), sinY = Math.sin(dy);
+      const right = add(mul(r, cosX), mul(z, -sinX));
+      const forward = add(mul(r, sinX), mul(z, cosX));
+      const toward = add(mul(forward, cosY), mul(u, -sinY));
+      camera = [unit(right), unit(cross(toward, right)), unit(toward)];
+      state.axis = null;
+    }
+
+    function zoomBy(factor, anchor = null) {
+      const old = state.zoom;
+      state.zoom = clamp(old * factor, .28, 7);
+      if (anchor) {
+        const ratio = state.zoom / old;
+        const center = [width / 2, height / 2];
+        state.pan = state.pan.map((v, i) => (v + center[i] - anchor[i]) * ratio + anchor[i] - center[i]);
+      }
+      hideTooltip();
+      requestDraw();
+    }
+
+    function requestDraw() {
+      if (!queuedFrame) queuedFrame = requestAnimationFrame(draw);
+    }
+
+    function setSpin(enabled) {
+      state.spin = enabled;
+      el('spin').setAttribute('aria-pressed', enabled);
+      el('spin').textContent = enabled ? '暂停旋转' : '自动旋转';
+      lastTime = 0;
+      if (enabled) {
+        state.axis = null;
+        updateViewLabel('自动旋转');
+      } else if (el('view-label').textContent === '自动旋转') {
+        updateViewLabel();
+      }
+      requestDraw();
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = rect.width || 1;
+      height = rect.height || 1;
+      sizeScale = Math.min(window.devicePixelRatio || 1, 2.5);
+      canvas.width = Math.max(1, Math.round(width * sizeScale));
+      canvas.height = Math.max(1, Math.round(height * sizeScale));
+      requestDraw();
+    }
+
+    function project(point) {
+      if (view.pivot) point = add(point, neg(view.pivot));
+      const z = dot(point, camera[2]);
+      const perspective = state.perspective ? view.distance / (view.distance - z) : 1;
+      const k = view.scale * perspective;
+      return { x: view.x + dot(point, camera[0]) * k, y: view.y - dot(point, camera[1]) * k, z, perspective };
+    }
+
+    function facing(position, normal) {
+      if (!state.perspective) return dot(camera[2], normal) > 1e-7;
+      if (view.pivot) position = add(position, neg(view.pivot));
+      const direction = add(mul(camera[2], view.distance), mul(position, -1));
+      return dot(direction, normal) > 1e-7;
+    }
+
+    function drawPath(points, close = false) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
+      if (close) ctx.closePath();
+    }
+
+    function drawFace(face, front) {
+      const fills = front ? ['#6697f52b', '#679beb24', '#c2ddff7d'] : ['#7398d610', '#638bc919', '#81ace81d'];
+      ctx.fillStyle = fills[face.index];
+      drawPath(face.points.map(project), true);
+      ctx.fill();
+    }
+
+    function drawEdge(edge, front) {
+      ctx.lineWidth = front ? 1.65 : 1;
+      ctx.strokeStyle = front ? '#2860b9c7' : '#4e72a568';
+      ctx.setLineDash(front ? [] : [4, 5]);
+      drawPath(edge.ends.map(project));
+      ctx.stroke();
+    }
+
+    function drawPoint(point, color, glow, opacity = 1) {
+      const {x, y, radius, z} = point;
+      const light = ctx.createRadialGradient(x - radius * .28, y - radius * .36, radius * .08, x, y, radius);
+      light.addColorStop(0, glow);
+      light.addColorStop(.46, color);
+      light.addColorStop(1, point.type === '顶点' ? '#134ba9' : '#ad600c');
+      ctx.globalAlpha = opacity * (.72 + .28 * clamp((z / mesh.radius + 1) / 2, 0, 1));
+      ctx.beginPath();
+      ctx.arc(x, y, radius + 2, 0, 2 * Math.PI);
+      ctx.fillStyle = '#e8f2ffe0';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      ctx.fillStyle = light;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffffaf';
+      ctx.lineWidth = .8;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function arrow(start, end, color, label) {
+      const distance = Math.hypot(end.x - start.x, end.y - start.y);
+      if (distance < 7) return;
+      const direction = (end.x - start.x) / distance;
+      const slope = (end.y - start.y) / distance;
+      const base = { x: end.x - 6 * direction, y: end.y - 6 * slope };
+      ctx.strokeStyle = ctx.fillStyle = color;
+      ctx.lineWidth = 1.55;
+      drawPath([start, base]);
+      ctx.stroke();
+      drawPath([end, {x: base.x + 3 * slope, y: base.y - 3 * direction},
+        {x: base.x - 3 * slope, y: base.y + 3 * direction}], true);
+      ctx.fill();
+      ctx.font = '700 12px Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, end.x + 8 * direction, end.y + 9 * slope);
+    }
+
+    function drawAxes() {
+      ctx.setLineDash([]);
+      const origin = project(mesh.origin);
+      const scale = Math.min(.32, mesh.radius * .24);
+      const gizmo = { x: 49, y: height - 49 };
+      ctx.fillStyle = '#f9fcffeb';
+      ctx.strokeStyle = '#cbdcf3';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(gizmo.x, gizmo.y, 37, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      const dirs = basis.vectors.map(unit);
+      const bottom = dirs.map((dir, i) => ({dir, i, z: dot(dir, camera[2])})).sort((a, b) => a.z - b.z);
+      for (const {dir, i} of bottom) {
+        const endpoint = project(add(mesh.origin, mul(dir, -scale)));
+        arrow(origin, endpoint, AXIS_COLORS[i], '−' + SYMBOLS[i]);
+        arrow(gizmo, { x: gizmo.x + dot(dir, camera[0]) * 23, y: gizmo.y - dot(dir, camera[1]) * 23 }, AXIS_COLORS[i], SYMBOLS[i]);
+      }
+      ctx.fillStyle = '#526780';
+      ctx.beginPath();
+      ctx.arc(gizmo.x, gizmo.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function draw(time) {
+      queuedFrame = 0;
+      if (!mesh || !ctx) return;
+      advanceSymmetry(time);
+      if (state.spin) {
+        if (lastTime) orbit(Math.min(time - lastTime, 50) * .00055, 0);
+        lastTime = time;
+        requestDraw();
+      }
+      ctx.setTransform(sizeScale, 0, 0, sizeScale, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      if (groupLab.active) {
+        drawGroupScene(time);
+        return;
+      }
+      const showProbe = symmetry.active && symmetry.probeVisible;
+      const radius = symmetry.active ? Math.max(symmetry.displayRadius, showProbe ? symmetry.probeFit : 0) : mesh.radius;
+      const fit = symmetry.active ? 1 : clamp(Math.exp(mesh.extent - fitExtent), .12, 1.45);
+      const frameScale = state.perspective ? .325 : .375;
+      view = {
+        x: width / 2 + state.pan[0], y: height / 2 + state.pan[1],
+        scale: Math.min(width, height) * frameScale * (symmetry.active ? 1.1 : 1) * state.zoom * fit / radius,
+        distance: Math.max(radius * 3.8, displayMesh.radius * 1.5, showProbe ? norm(symmetry.probe) * 1.5 : 0),
+        pivot: symmetry.active ? symmetry.pivot.position : null,
+      };
+      if (!symmetry.active || symmetry.original) drawCell();
+      else screenPoints = [];
+      if (symmetry.active) drawSymmetry();
+      if (!showProbe) probeHandle.hidden = true;
+    }
+
+    function drawCell() {
+      const opacity = symmetry.active ? .48 : 1;
+      ctx.globalAlpha = opacity;
+      const faces = displayMesh.faces.map(face => ({
+        ...face, front: facing(face.points[0], face.normal),
+        z: face.points.reduce((total, point) => total + dot(point, camera[2]), 0) / face.points.length,
+      })).sort((a, b) => a.z - b.z);
+      const edges = displayMesh.edges.map(edge => ({
+        ...edge, front: edge.boundary.some((side, i) => side !== 0 && facing(edge.ends[0], mul(mesh.normals[i], side))),
+      }));
+      ctx.setLineDash([]);
+      if (state.display.faces) faces.filter(f => !f.front).forEach(f => drawFace(f, false));
+      if (state.display.edges) edges.filter(e => !e.front).forEach(e => drawEdge(e, false));
+      ctx.setLineDash([]);
+      if (state.display.faces) faces.filter(f => f.front).forEach(f => drawFace(f, true));
+      if (state.display.edges) edges.filter(e => e.front).forEach(e => drawEdge(e, true));
+      if (state.display.axes && !symmetry.active) drawAxes();
+      if (state.display.points || pointEdit.active) {
+        const baseRadius = Math.min(width, height) / (state.repeat.some(n => n > 1) ? 82 : 52);
+        screenPoints = displayMesh.points.map(point => {
+          const projection = project(point.position);
+          const depth = clamp(1 + projection.z / mesh.radius * .15, .8, 1.2);
+          return {...point, ...projection, radius: clamp(baseRadius * depth * Math.sqrt(state.zoom) * projection.perspective, 2.6, 15)};
+        }).sort((a, b) => a.z - b.z);
+        for (const point of screenPoints) {
+          if (symmetry.active) drawPoint(point, '#829fc0', '#e5effb', opacity);
+          else if (pointEdit.active && drawEditedHandle(point)) continue;
+          else if (point.type === '顶点') drawPoint(point, '#3178e7', '#c2e3ff');
+          else drawPoint(point, '#e18e20', '#fff0b5');
+        }
+      } else {
+        screenPoints = [];
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawEditedHandle(point) {
+      const pinned = pointEdit.current.pins.has(point.key);
+      const selected = pointEdit.selected.has(point.key);
+      if (!pinned && !selected) return false;
+      const fill = pinned ? '#9e431f' : '#087d70';
+      markPoint(point, point.radius + 3, '#fff', fill);
+      markPoint(point, point.radius, fill, '#fff');
+      const arm = clamp(point.radius * .48, 2, 5);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(point.x - arm, point.y);
+      ctx.lineTo(point.x + arm, point.y);
+      if (!pinned) {
+        ctx.moveTo(point.x, point.y - arm);
+        ctx.lineTo(point.x, point.y + arm);
+      }
+      ctx.stroke();
+      return true;
+    }
+
+    function drawSymmetry() {
+      const relative = point => add(point, neg(symmetry.pivot.position));
+      const screen = point => project(add(point, symmetry.pivot.position));
+      const transform = symmetryTransform(symmetry.progress);
+      const transformed = point => screen(transform(relative(point)));
+      const kind = symmetry.family.kind;
+      if (symmetry.element && kind === 'mirror') drawSymmetryElements(screen);
+
+      ctx.setLineDash([]);
+      if (state.display.faces) {
+        ctx.fillStyle = '#7453ce13';
+        for (const face of displayMesh.faces) {
+          drawPath(face.points.map(transformed), true);
+          ctx.fill();
+        }
+      }
+      if (state.display.edges) {
+        ctx.strokeStyle = '#6546b5a8';
+        ctx.lineWidth = 1.45;
+        for (const edge of displayMesh.edges) {
+          drawPath(edge.ends.map(transformed));
+          ctx.stroke();
+        }
+      }
+      if (state.display.points) {
+        const baseRadius = Math.min(width, height) / (state.repeat.some(n => n > 1) ? 112 : 87);
+        const projections = displayMesh.points.map(point => transformed(point.position)).sort((a, b) => a.z - b.z);
+        for (const point of projections) {
+          const radius = clamp(baseRadius * Math.sqrt(state.zoom) * point.perspective, 1.8, 10);
+          markPoint(point, radius, '#7955d3', '#f8f2ff');
+        }
+      }
+      if (symmetry.element && kind !== 'identity') {
+        if (symmetry.family.order) drawSymmetryElements(screen);
+        const pivot = screen([0, 0, 0]);
+        markPoint(pivot, 4.2, '#fff', '#7047c8');
+        tagPoint(pivot, 'O', '#5838ae', 10, 10);
+      }
+      if (symmetry.probeVisible) drawProbe(screen, transform);
+    }
+
+    function markPoint(point, radius, fill, stroke) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = stroke;
+      ctx.stroke();
+    }
+
+    function tagPoint(point, label, color, dx, dy) {
+      ctx.font = '700 12px "Microsoft YaHei UI", system-ui, sans-serif';
+      ctx.textAlign = dx < 0 ? 'right' : 'left';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#f9fbff';
+      ctx.strokeText(label, point.x + dx, point.y + dy);
+      ctx.fillStyle = color;
+      ctx.fillText(label, point.x + dx, point.y + dy);
+    }
+
+    function drawSymmetryElements(screen) {
+      const {sites, kind} = symmetry.family;
+      const geometries = sites.map(site => {
+        const {axis} = site;
+        if (kind === 'mirror') {
+          const u = unit(cross(axis, Math.abs(axis[2]) > .9 ? X : Z));
+          const v = cross(axis, u);
+          const radius = symmetry.radius * .86;
+          const outline = Array.from({length: 36}, (_, i) => {
+            const angle = i * Math.PI * 2 / 36;
+            return screen(mul(add(mul(u, Math.cos(angle)), mul(v, Math.sin(angle))), radius));
+          });
+          return { site, outline };
+        }
+        const extent = mul(axis, symmetry.radius * 1.05);
+        return { site, outline: [screen(neg(extent)), screen(extent)] };
+      });
+      const active = geometries.find(item => item.site === symmetry.site);
+      const showPlane = kind === 'mirror';
+      for (const item of [...geometries.filter(item => item !== active), active]) {
+        const isSelected = item === active;
+        ctx.setLineDash(isSelected ? [] : [4, 5]);
+        drawPath(item.outline, showPlane);
+        if (showPlane && isSelected) {
+          ctx.fillStyle = '#b7a2fb40';
+          ctx.fill();
+        }
+        if (isSelected) {
+          ctx.strokeStyle = '#fffdfdcb';
+          ctx.lineWidth = 5;
+          ctx.stroke();
+        }
+        ctx.strokeStyle = isSelected ? '#4f2bb2' : '#6d5f9b4f';
+        ctx.lineWidth = isSelected ? 2.8 : 1;
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      const positions = [];
+      for (const {site, outline} of geometries) {
+        const visible = outline.filter(point => point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= height);
+        site.marker.hidden = visible.length === 0;
+        if (visible.length === 0) continue;
+        const anchor = visible.reduce((highest, point) => point.y < highest.y ? point : highest);
+        positionElementMarker(site.marker, anchor, positions, site === symmetry.site);
+      }
+    }
+
+    function positionElementMarker(marker, anchor, positions, selected) {
+      const offsets = [[0, -13], [29, -13], [-29, -13], [0, 16], [29, 16], [-29, 16],
+        [58, -13], [-58, -13], [58, 16], [-58, 16]];
+      const candidates = offsets.map(([x, y]) => ({
+        x: clamp(anchor.x + x, 17, width - 17),
+        y: clamp(anchor.y + y, 49, height - 29),
+      }));
+      const position = candidates.find(candidate =>
+        positions.every(used => Math.abs(candidate.x - used.x) >= 29 || Math.abs(candidate.y - used.y) >= 23)) ?? candidates[0];
+      positions.push(position);
+      marker.style.left = position.x + 'px';
+      marker.style.top = position.y + 'px';
+      ctx.strokeStyle = selected ? '#4f2bb2' : '#6d5f9b4f';
+      ctx.lineWidth = selected ? 1.5 : 1;
+      drawPath([anchor, position]);
+      ctx.stroke();
+    }
+
+    function drawProbe(screen, transform) {
+      const trace = symmetry.trace.map(screen);
+      const start = trace[0], target = trace.at(-1);
+      const current = screen(transform(symmetry.probe));
+      probeHandle.hidden = !probeDrag && (start.x < 0 || start.x > width || start.y < 0 || start.y > height);
+      if (!probeHandle.hidden) {
+        probeHandle.style.left = start.x + 'px';
+        probeHandle.style.top = start.y + 'px';
+      }
+      ctx.setLineDash([3, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#087776b0';
+      drawPath(trace);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (norm(add(symmetry.trace.at(-1), neg(symmetry.probe))) < norm(symmetry.probe) * 1e-10 + 1e-12) {
+        tagPoint(start, 'P = P′', '#106e66', 19, -9);
+        return;
+      }
+      markPoint(target, 5, '#e0f6f3', '#0a7c74');
+      if (Math.hypot(target.x - start.x, target.y - start.y) > 15) {
+        tagPoint(target, 'P′', '#106e66', 8, -8);
+      }
+      if (Math.hypot(current.x - start.x, current.y - start.y) > 15) {
+        markPoint(current, 5.7, '#0d827b', '#f2fffb');
+      }
+    }
+
+    function hideTooltip() {
+      tooltip.hidden = true;
+    }
+
+    function latticePointAt(x, y, padding = 3) {
+      return screenPoints.findLast(point => Math.hypot(x - point.x, y - point.y) <= point.radius + padding);
+    }
+
+    function tooltipAt(x, y) {
+      if (groupLab.active) {
+        groupHover(x, y);
+        return;
+      }
+      if (state.spin || symmetry.playing || (!state.display.points && !pointEdit.active)) return;
+      const point = latticePointAt(x, y);
+      canvas.classList.toggle('node-hover', pointEdit.active && pointEdit.tool === 'move' && !!point &&
+        !pointEdit.current.pins.has(point.key));
+      canvas.classList.toggle('pin-hover', pointEdit.active && pointEdit.tool === 'pin' && !!point);
+      if (!point) {
+        hideTooltip();
+        return;
+      }
+      const values = document.createElement('code');
+      const offset = pointEdit.current.offsets.get(point.key);
+      const status = pointEdit.active && pointEdit.current.pins.has(point.key) ? ' · 已固定' :
+        pointEdit.active && pointEdit.selected.has(point.key) ? ' · 已选中' : '';
+      values.textContent = offset ? '(' + add(mul(point.coord, 1 / 6), offset).map(probeNumber).join(', ') + ')' : formatFractional(point.coord);
+      tooltip.replaceChildren(point.type + status + ' · 分数坐标', document.createElement('br'), values);
+      tooltip.hidden = false;
+      tooltip.style.left = clamp(x + 13, 3, width - tooltip.offsetWidth - 3) + 'px';
+      tooltip.style.top = clamp(y - tooltip.offsetHeight - 8, 40, height - tooltip.offsetHeight - 3) + 'px';
+    }
+
+    const pointers = new Map();
+    const positionFrom = event => {
+      const rect = canvas.getBoundingClientRect();
+      return [event.clientX - rect.left, event.clientY - rect.top];
+    };
+    function offsetInView(dx, dy, depth) {
+      const projection = state.perspective ? view.distance / (view.distance - depth) : 1;
+      const unitsPerPixel = 1 / (view.scale * projection);
+      return add(mul(camera[0], dx * unitsPerPixel), mul(camera[1], -dy * unitsPerPixel));
+    }
+
+    function moveProbeInView(dx, dy) {
+      const offset = offsetInView(dx, dy, dot(symmetry.probe, camera[2]));
+      editProbePosition(probeFractional(add(symmetry.probe, offset)), { fit: false });
+    }
+
+    function updatePointSelection(key, additive, toggle) {
+      const selection = pointEdit.selected;
+      if (pointEdit.current.pins.has(key)) return;
+      if (additive && toggle && selection.has(key)) selection.delete(key);
+      else {
+        if (!additive && !selection.has(key)) selection.clear();
+        selection.add(key);
+      }
+      updateEditReadouts();
+      requestDraw();
+    }
+
+    function finishPointClick(gesture) {
+      const {key, tool, additive} = gesture;
+      if (tool === 'move') {
+        updatePointSelection(key, additive, true);
+        return;
+      }
+      const {pins} = pointEdit.current;
+      if (pins.has(key)) pins.delete(key);
+      else {
+        pins.add(key);
+        pointEdit.selected.delete(key);
+      }
+      updateEditReadouts();
+      requestDraw();
+    }
+
+    function dragLatticePoints(gesture, point, delta) {
+      if (!gesture.moved) {
+        delta = add(point, neg(gesture.start));
+        if (norm(delta) < 3) return;
+        gesture.moved = true;
+        if (gesture.tool === 'move') updatePointSelection(gesture.key, gesture.additive, false);
+      }
+      const {pins, offsets} = pointEdit.current;
+      if (gesture.tool !== 'move' || pins.has(gesture.key)) return;
+      const anchor = displayMesh.byKey.get(gesture.key);
+      const displacement = fractional(offsetInView(...delta, dot(anchor.position, camera[2])));
+      if (!displacement.every(Number.isFinite)) return;
+      for (const key of pointEdit.selected) {
+        if (pins.has(key)) continue;
+        const offset = add(offsets.get(key) ?? [0, 0, 0], displacement);
+        if (!offset.every(Number.isFinite)) continue;
+        if (norm(offset) < 1e-12) offsets.delete(key);
+        else offsets.set(key, offset);
+      }
+      canvas.classList.add('node-dragging');
+      updateEditedGeometry();
+      requestDraw();
+    }
+
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    probeHandle.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || probeDrag || pointers.size) return;
+      event.preventDefault();
+      probeDrag = { id: event.pointerId, position: positionFrom(event) };
+      probeHandle.setPointerCapture(event.pointerId);
+      probeHandle.focus({ preventScroll: true });
+      probeHandle.classList.add('dragging');
+      setSpin(false);
+      seekSymmetry(symmetry.progress);
+    });
+    probeHandle.addEventListener('pointermove', event => {
+      if (probeDrag?.id !== event.pointerId || !symmetry.active) return;
+      const point = positionFrom(event);
+      const delta = add(point, neg(probeDrag.position));
+      probeDrag.position = point;
+      moveProbeInView(...delta);
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      probeHandle.addEventListener(type, event => {
+        if (probeDrag?.id !== event.pointerId) return;
+        probeDrag = null;
+        probeHandle.classList.remove('dragging');
+        requestDraw();
+      });
+    }
+    probeHandle.addEventListener('keydown', event => {
+      if (!arrows[event.key]) return;
+      event.preventDefault();
+      setSpin(false);
+      moveProbeInView(...mul(arrows[event.key], event.shiftKey ? 16 : 4));
+    });
+    canvas.addEventListener('pointerdown', event => {
+      if (event.button !== 0 && event.button !== 1 && event.button !== 2) return;
+      if (probeDrag || pointers.size >= 2) return;
+      const position = positionFrom(event);
+      pointers.set(event.pointerId, position);
+      if (pointers.size === 2) pointEdit.gesture = null;
+      else if (!groupLab.active && pointEdit.active && event.button === 0 && !event.shiftKey) {
+        const node = latticePointAt(...position, event.pointerType === 'touch' ? 9 : 4);
+        if (node) {
+          pointEdit.gesture = {
+            id: event.pointerId, key: node.key, start: position, tool: pointEdit.tool, moved: false,
+            additive: pointEdit.multi || event.ctrlKey || event.metaKey,
+          };
+        }
+      }
+      canvas.setPointerCapture(event.pointerId);
+      canvas.classList.add('dragging');
+      canvas.focus({ preventScroll: true });
+      hideTooltip();
+      setSpin(false);
+    });
+    canvas.addEventListener('pointermove', event => {
+      const point = positionFrom(event);
+      const previous = pointers.get(event.pointerId);
+      if (!previous) {
+        if (!pointers.size && event.pointerType === 'mouse') tooltipAt(...point);
+        return;
+      }
+      const delta = add(point, mul(previous, -1));
+      pointers.set(event.pointerId, point);
+      if (pointEdit.gesture?.id === event.pointerId) {
+        dragLatticePoints(pointEdit.gesture, point, delta);
+        return;
+      }
+      if (pointers.size === 2) {
+        const other = [...pointers].find(([id]) => id !== event.pointerId)[1];
+        const distance = norm(add(point, mul(other, -1)));
+        const oldDistance = norm(add(previous, mul(other, -1)));
+        if (oldDistance > 1) zoomBy(distance / oldDistance, mul(add(other, previous), .5));
+        state.pan = add(state.pan, mul(delta, .5));
+      } else if (event.shiftKey || event.buttons & 6) {
+        state.pan = add(state.pan, delta);
+      } else {
+        orbit(delta[0] * .009, delta[1] * .009);
+        updateViewLabel();
+      }
+      requestDraw();
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      canvas.addEventListener(type, event => {
+        if (pointEdit.gesture?.id === event.pointerId) {
+          if (type === 'pointerup' && !pointEdit.gesture.moved) finishPointClick(pointEdit.gesture);
+          pointEdit.gesture = null;
+        }
+        pointers.delete(event.pointerId);
+        if (!pointers.size) canvas.classList.remove('dragging', 'node-dragging');
+      });
+    }
+    canvas.addEventListener('pointerleave', () => {
+      canvas.classList.remove('node-hover', 'pin-hover');
+      hideTooltip();
+    });
+    canvas.addEventListener('contextmenu', event => event.preventDefault());
+    function wheelZoom(event) {
+      event.preventDefault();
+      const multiplier = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? height : 1;
+      zoomBy(Math.exp(-event.deltaY * multiplier * .0014), positionFrom(event));
+    }
+    canvas.addEventListener('wheel', wheelZoom, { passive: false });
+    probeHandle.addEventListener('wheel', wheelZoom, { passive: false });
+    canvas.addEventListener('keydown', event => {
+      const movement = arrows[event.key];
+      if (movement) {
+        event.preventDefault();
+        setSpin(false);
+        if (event.shiftKey) state.pan = add(state.pan, mul(movement, 13));
+        else {
+          orbit(...mul(movement, .12));
+          updateViewLabel();
+        }
+        hideTooltip();
+        requestDraw();
+      } else if (['+', '=', '-'].includes(event.key)) {
+        event.preventDefault();
+        zoomBy(event.key === '-' ? .89 : 1.12);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        resetView();
+      }
+    });
+    for (const button of document.querySelectorAll('[data-axis]')) {
+      button.addEventListener('click', () => {
+        setSpin(false);
+        pointAlong(Number(button.dataset.axis));
+        hideTooltip();
+        requestDraw();
+      });
+    }
+    for (const [i, axis] of SYMBOLS.slice(0, 3).entries()) {
+      const input = el('repeat-' + axis);
+      input.addEventListener('input', () => {
+        if (!input.validity.valid || input.value === '') return;
+        state.repeat[i] = input.valueAsNumber;
+        buildMesh();
+        fitExtent = mesh.extent;
+      });
+      input.addEventListener('blur', () => { input.value = state.repeat[i]; });
+    }
+    for (const checkbox of document.querySelectorAll('[data-display]')) {
+      checkbox.addEventListener('change', () => {
+        state.display[checkbox.dataset.display] = checkbox.checked;
+        updateInteractionMode();
+        hideTooltip();
+        updateStats();
+        requestDraw();
+      });
+    }
+    el('projection').addEventListener('click', () => {
+      state.perspective = !state.perspective;
+      el('projection').textContent = state.perspective ? '透视投影' : '正交投影';
+      hideTooltip();
+      requestDraw();
+    });
+    el('locked').addEventListener('click', () => setMode(false));
+    el('free').addEventListener('click', () => setMode(true));
+    el('rh-cell').addEventListener('change', () => {
+      const previous = state.rh;
+      state.rh = el('rh-cell').value;
+      const result = applyParams(hexRh() ? rhombohedralToHexagonal(state.params) : hexagonalToRhombohedral(state.params));
+      if (result.error) {
+        state.rh = previous;
+        el('rh-cell').value = previous;
+        showError('当前尺寸超出晶胞设置的转换范围。', result.fields);
+        return;
+      }
+      updateHeading();
+      resetView();
+    });
+    el('reset-params').addEventListener('click', () => applyParams(defaults()));
+    el('reset-view').addEventListener('click', resetView);
+    el('spin').addEventListener('click', () => setSpin(!state.spin));
+    el('edit-toggle').addEventListener('click', () => togglePointEdit(!pointEdit.active));
+    el('edit-move').addEventListener('click', () => selectEditTool('move'));
+    el('edit-pin').addEventListener('click', () => selectEditTool('pin'));
+    el('edit-multi').addEventListener('click', () => {
+      pointEdit.multi = !pointEdit.multi;
+      el('edit-multi').setAttribute('aria-pressed', pointEdit.multi);
+      selectEditTool('move');
+    });
+    el('edit-pin-selection').addEventListener('click', () => {
+      for (const key of pointEdit.selected) pointEdit.current.pins.add(key);
+      pointEdit.selected.clear();
+      updateEditReadouts();
+      requestDraw();
+    });
+    el('edit-clear-selection').addEventListener('click', () => {
+      pointEdit.selected.clear();
+      updateEditReadouts();
+      requestDraw();
+    });
+    el('edit-unpin').addEventListener('click', () => {
+      pointEdit.current.pins.clear();
+      updateEditReadouts();
+      requestDraw();
+    });
+    el('edit-reset-selection').addEventListener('click', () => restorePointPositions(pointEdit.selected));
+    el('edit-reset').addEventListener('click', () => restorePointPositions(pointEdit.current.offsets.keys()));
+    el('symmetry-toggle').addEventListener('click', () => toggleSymmetry(!symmetry.active));
+    el('point-group').addEventListener('change', event => {
+      symmetry.group = POINT_GROUPS[SYSTEMS.indexOf(system())].find(group => group.id === event.target.value);
+      clearElementSelection();
+      refreshElements();
+    });
+    el('symmetry-element').addEventListener('change', event => {
+      selectElementFamily(symmetry.families.find(family => family.key === event.target.value));
+    });
+    for (const [i, input] of probeInputs.entries()) {
+      input.addEventListener('input', () => {
+        const coords = symmetry.probeCoords.slice();
+        coords[i] = input.valueAsNumber;
+        if (editProbePosition(coords, { active: input })) return;
+        input.setAttribute('aria-invalid', 'true');
+        el('probe-error').hidden = false;
+      });
+      input.addEventListener('focus', () => { input.value = String(symmetry.probeCoords[i]); });
+      input.addEventListener('blur', () => {
+        syncProbeInputs();
+      });
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === 'Escape') input.blur();
+      });
+    }
+    el('probe-reset').addEventListener('click', () => editProbePosition(defaultProbeCoordinates()));
+    el('symmetry-speed').addEventListener('change', event => { symmetry.speed = Number(event.target.value); });
+    el('symmetry-progress').addEventListener('input', event => seekSymmetry(event.target.valueAsNumber / 100));
+    el('symmetry-rewind').addEventListener('click', () => seekSymmetry(0));
+    el('symmetry-play').addEventListener('click', () => {
+      if (symmetry.playing) {
+        seekSymmetry(symmetry.progress);
+        return;
+      }
+      if (symmetry.progress >= 1) symmetry.progress = 0;
+      symmetry.playing = true;
+      symmetry.lastTime = null;
+      updateTimeline();
+      hideTooltip();
+      requestDraw();
+    });
+    for (const checkbox of document.querySelectorAll('[data-symmetry]')) {
+      checkbox.addEventListener('change', () => {
+        symmetry[checkbox.dataset.symmetry] = checkbox.checked;
+        el('original-key').hidden = !symmetry.original;
+        el('symmetry-markers').hidden = !symmetry.active || !symmetry.element;
+        hideTooltip();
+        requestDraw();
+      });
+    }
+    // The catalog uses conventional fractional coordinates. A point-group orbit stays
+    // finite, while a space-group orbit can be folded into a single periodic cell.
+    const pointDirectory = POINT_GROUPS.flatMap((groups, systemIndex) =>
+      groups.map(group => ({ ...group, systemIndex, symbol: group.label })));
+    const spaceDirectory = JSON.parse(el('space-group-data').textContent).map(
+      ([id, symbol, full, short, hallNumber, hallSymbol, setting, pointIndex, encoded]) => ({
+        id, symbol, full, short, hallNumber, hallSymbol, setting, pointIndex, encoded,
+        systemIndex: pointDirectory[pointIndex].systemIndex,
+      }));
+    const groupDefaults = { point: [.713, .637, .783], space: [.137, .241, .367] };
+    const groupLab = {
+      active: false, kind: 'space', selected: { point: 'm-3m', space: 4 },
+      seeds: { point: groupDefaults.point.slice(), space: groupDefaults.space.slice() },
+      current: null, operations: [], operation: null, basis: null, repeat: false,
+      progress: 0, playing: false, lastTime: null, bookmark: null,
+      orbit: [], locations: [], projected: [], trace: [],
+    };
+    const groupInputs = ['group-x', 'group-y', 'group-z'].map(el);
+    const groupTypes = {
+      identity: '恒等', translation: '平移', rotation: '旋转', screw: '螺旋旋转',
+      mirror: '镜面反射', glide: '滑移反射', inversion: '中心反演', rotoinversion: '旋转反演',
+    };
+    const groupSubscripts = '₀₁₂₃₄₅₆₇₈₉';
+    const groupPointMode = () => groupLab.kind === 'point';
+    const entrySymbol = entry => entry.symbol.replace(/_(\d)/g, (_, digit) => groupSubscripts[Number(digit)])
+      .replace(/-(\d)/g, '$1̅');
+    const normalizeSymbol = value => value.toLowerCase()
+      .replace(/^no\.\s*(?=\d)/, '')
+      .replace(/([0-9])\u0305/g, '-$1')
+      .replace(/[₀-₉]/g, digit => String(groupSubscripts.indexOf(digit)))
+      .replace(/[−–]/g, '-').replace(/[\s_#]/g, '');
+    const groupCoordinate = coords => '(' + coords.map(value =>
+      Math.abs(value) < 1e-10 ? '0' : probeNumber(value)).join(', ') + ')';
+
+    function reciprocalRows([a, b, c]) {
+      const rows = [cross(b, c), cross(c, a), cross(a, b)];
+      const determinant = dot(a, rows[0]);
+      return rows.map(row => mul(row, 1 / determinant));
+    }
+
+    function decodeSpaceOperation(encoded) {
+      const digits = encoded % 19683;
+      const rotation = IDENTITY.map((_, i) => IDENTITY.map((_, j) =>
+        Math.floor(digits / 3 ** (8 - 3 * i - j)) % 3 - 1));
+      const translations = Math.floor(encoded / 19683);
+      const twelfths = [144, 12, 1].map(divisor => Math.floor(translations / divisor) % 12);
+      return { rotation, translation: mul(twelfths, 1 / 12), twelfths };
+    }
+
+    function wrapGroupCoordinate(value) {
+      const fraction = value - Math.floor(value);
+      return fraction < 1e-9 || fraction > 1 - 1e-9 ? 0 : fraction;
+    }
+
+    function operationTriplet(operation) {
+      const variables = ['x', 'y', 'z'];
+      const parts = operation.rotation.map((row, i) => {
+        let expression = '';
+        for (const [j, value] of row.entries()) {
+          const rounded = Math.round(value);
+          if (!rounded) continue;
+          expression += rounded < 0 ? '−' : expression ? '+' : '';
+          if (Math.abs(rounded) !== 1) expression += Math.abs(rounded);
+          expression += variables[j];
+        }
+        const numerator = operation.twelfths[i];
+        if (numerator) {
+          const factor = [12, 6, 4, 3, 2, 1].find(divisor => numerator % divisor === 0);
+          expression += (expression ? '+' : '') + numerator / factor + '/' + 12 / factor;
+        }
+        return expression || '0';
+      });
+      return parts.join(', ');
+    }
+
+    function describeAffine(matrix, offset) {
+      const linear = describeMatrix(matrix);
+      const {axis, angle} = linear;
+      let kind = linear.kind;
+      let center = [0, 0, 0], slide = [0, 0, 0];
+      if (kind === 'identity') {
+        slide = offset;
+        if (norm(slide) > 1e-8) kind = 'translation';
+      } else if (kind === 'rotation') {
+        slide = mul(axis, dot(offset, axis));
+        const perpendicular = add(offset, neg(slide));
+        center = mul(add(perpendicular, mul(cross(axis, perpendicular), 1 / Math.tan(angle * RAD / 2))), .5);
+        if (norm(slide) > 1e-8) kind = 'screw';
+      } else if (kind === 'mirror') {
+        const normalShift = mul(axis, dot(offset, axis));
+        slide = add(offset, neg(normalShift));
+        center = mul(normalShift, .5);
+        if (norm(slide) > 1e-8) kind = 'glide';
+      } else if (kind === 'inversion') {
+        center = mul(offset, .5);
+      } else {
+        const difference = IDENTITY.map((row, i) => add(row, neg(matrix[i])));
+        center = matVec(reciprocalRows(transpose(difference)), offset);
+      }
+      return { kind, axis, angle, matrix, center, slide };
+    }
+
+    function prepareGroupOperations(entry) {
+      const columns = groupLab.columns;
+      const inverse = groupLab.inverse;
+      if (groupPointMode()) {
+        const frame = orientedFrame(groupLab.basis.vectors, entry.systemIndex === 1, entry.systemIndex === 4);
+        const world = transpose(frame);
+        return entry.ops.map((op, i) => {
+          const matrix = matMul(matMul(world, op.matrix), frame);
+          const rotation = matMul(matMul(inverse, matrix), columns);
+          return { ...describeAffine(matrix, [0, 0, 0]), center: groupLab.center,
+            rotation, twelfths: [0, 0, 0], index: i };
+        });
+      }
+      return entry.encoded.map((code, index) => {
+        const operation = decodeSpaceOperation(code);
+        const matrix = matMul(matMul(columns, operation.rotation), inverse);
+        const offset = matVec(columns, operation.translation);
+        return { ...operation, ...describeAffine(matrix, offset), index };
+      });
+    }
+
+    function groupImage(op, seed) {
+      if (groupPointMode()) {
+        const center = [.5, .5, .5];
+        return add(center, matVec(op.rotation, add(seed, neg(center))));
+      }
+      return add(matVec(op.rotation, seed), op.translation);
+    }
+
+    function groupPose(fraction) {
+      const op = groupLab.operation;
+      const source = groupLab.source;
+      const relative = add(source, neg(op.center));
+      switch (op.kind) {
+        case 'rotation':
+        case 'screw': {
+          const rotated = matVec(rotationMatrix(op.axis, fraction * op.angle), relative);
+          return add(add(op.center, rotated), mul(op.slide, fraction));
+        }
+        case 'mirror':
+        case 'glide': {
+          const reflection = op.kind === 'glide' ? Math.min(fraction * 2, 1) : fraction;
+          const translation = Math.max(0, fraction * 2 - 1);
+          return add(add(source, mul(op.axis, -2 * reflection * dot(relative, op.axis))), mul(op.slide, translation));
+        }
+        case 'inversion':
+          return add(op.center, mul(relative, 1 - 2 * fraction));
+        case 'rotoinversion': {
+          const angle = op.angle * Math.min(fraction / .6, 1);
+          const scale = fraction <= .6 ? 1 : 1 - 2 * (fraction - .6) / .4;
+          return add(op.center, mul(matVec(rotationMatrix(op.axis, angle), relative), scale));
+        }
+        default:
+          return add(source, mul(op.slide, fraction));
+      }
+    }
+
+    function selectedGroupEntry() {
+      const id = groupLab.selected[groupLab.kind];
+      return groupPointMode() ? pointDirectory.find(entry => entry.id === id) : spaceDirectory[id - 1];
+    }
+
+    function groupSearchMatches(entry, index, query) {
+      if (!query) return true;
+      if (/^\d+$/.test(query)) return String(index).startsWith(query) || entry.symbol === query;
+      return [entry.symbol, entry.full, entry.short, entry.id].filter(Boolean)
+        .some(value => normalizeSymbol(String(value)).includes(query));
+    }
+
+    function renderGroupCatalog(reveal = false) {
+      const query = normalizeSymbol(el('group-search').value.trim());
+      const family = el('group-system-filter').value;
+      const selected = groupLab.selected[groupLab.kind];
+      const list = el('group-list');
+      const scroll = [list.scrollTop, list.scrollLeft];
+      const entries = groupPointMode() ? pointDirectory : spaceDirectory;
+      let count = 0;
+      let focusedEntry = null;
+      const buttons = document.createDocumentFragment();
+      for (const [index, entry] of entries.entries()) {
+        const number = index + 1;
+        if ((family !== '' && entry.systemIndex !== Number(family)) || !groupSearchMatches(entry, number, query)) continue;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'group-entry';
+        button.dataset.groupId = entry.id;
+        const indexTag = document.createElement('b');
+        indexTag.textContent = String(number).padStart(groupPointMode() ? 2 : 3, '0');
+        const label = document.createElement('span');
+        label.textContent = entrySymbol(entry);
+        button.append(indexTag, label);
+        button.title = SYSTEMS[entry.systemIndex].name;
+        button.setAttribute('aria-pressed', entry.id === selected);
+        button.addEventListener('click', () => {
+          loadGroup(entry);
+          for (const sibling of list.children) sibling.setAttribute('aria-pressed', sibling === button);
+        });
+        if (entry.id === selected) focusedEntry = button;
+        count++;
+        buttons.append(button);
+      }
+      list.replaceChildren(buttons);
+      el('group-list-count').textContent = count ? '显示 ' + count + ' / ' + entries.length + ' 项' : '没有符合条件的对称群';
+      list.scrollTop = scroll[0];
+      list.scrollLeft = scroll[1];
+      if (reveal && focusedEntry) {
+        const outer = list.getBoundingClientRect();
+        const inner = focusedEntry.getBoundingClientRect();
+        if (inner.top < outer.top || inner.bottom > outer.bottom) list.scrollTop += inner.top - outer.top - 8;
+        if (inner.left < outer.left || inner.right > outer.right) list.scrollLeft += inner.left - outer.left - 8;
+      }
+    }
+
+    function setGroupKind(kind, id) {
+      const changed = groupLab.kind !== kind;
+      groupLab.kind = kind;
+      if (id !== undefined) groupLab.selected[kind] = id;
+      if (changed || id !== undefined) {
+        el('group-search').value = '';
+        el('group-system-filter').value = '';
+      }
+      for (const button of document.querySelectorAll('[data-group-mode]')) {
+        button.setAttribute('aria-pressed', button.dataset.groupMode === kind);
+      }
+      loadGroup(selectedGroupEntry());
+      renderGroupCatalog(true);
+    }
+
+    function groupSettingName(setting, systemIndex) {
+      if (setting === 'H') return '六方轴设置';
+      if (setting === '2') return '原点选择 2';
+      if (setting === '1') return '原点选择 1';
+      if (systemIndex === 1 && setting.startsWith('b')) return 'b 唯一轴（' + setting + '）';
+      return setting || '常用设置';
+    }
+
+    function renderGroupMetadata(entry) {
+      const point = groupPointMode();
+      const fields = point ? [['晶系', SYSTEMS[entry.systemIndex].name], ['点群阶数', entry.ops.length]] :
+        [['完整符号', entrySymbol({symbol: entry.full})],
+          ['对应点群', pointDirectory[entry.pointIndex].label],
+          ['晶胞设置', groupSettingName(entry.setting, entry.systemIndex)],
+          ['Hall 编号', entry.hallNumber], ['Hall 符号', entry.hallSymbol]];
+      el('group-metadata').replaceChildren(...fields.map(([key, value]) => {
+        const line = document.createElement('div');
+        const label = document.createElement('dt');
+        const detail = document.createElement('dd');
+        label.textContent = key;
+        detail.textContent = value;
+        line.append(label, detail);
+        return line;
+      }));
+      el('group-open-point').hidden = point;
+      el('group-repeat-label').hidden = point;
+      el('group-heading').textContent = point ? '晶体点群' : '晶体空间群';
+      el('group-panel-detail').textContent = SYSTEMS[entry.systemIndex].name;
+      el('group-orbit-note').textContent = point ?
+        '固定点 O 在框架中心。操作式以 O 为原点，基点坐标以晶胞原点为准。' :
+        '等价位置按周期折回晶胞。动画展示所选操作的实际位移，终点可能落在相邻晶胞。';
+      el('group-seed-output-label').textContent = point ? '变换终点' : '终点折回晶胞';
+      el('model-code').textContent = point ? '点群' : 'No. ' + entry.id;
+      el('model-name').textContent = entrySymbol(entry);
+      el('model-detail').textContent = SYSTEMS[entry.systemIndex].name +
+        (point ? ' · 点群等价位置' : ' · 点群 ' + pointDirectory[entry.pointIndex].label + ' · 周期等价位置');
+      canvas.setAttribute('aria-label', entrySymbol(entry) + '的三维对称轨道');
+      el('group-order-label').textContent = point ? '点群阶数' : '一般位置重数';
+      el('group-order').textContent = groupLab.operations.length;
+    }
+
+    function loadGroup(entry) {
+      groupLab.current = entry;
+      groupLab.selected[groupLab.kind] = entry.id;
+      const systemIndex = entry.systemIndex;
+      const setting = !groupPointMode() && systemIndex === 4 ? SYSTEMS[5] : SYSTEMS[systemIndex];
+      groupLab.basis = cellBasis(setting.values);
+      groupLab.columns = transpose(groupLab.basis.vectors);
+      groupLab.inverse = reciprocalRows(groupLab.basis.vectors);
+      groupLab.center = matVec(groupLab.columns, [.5, .5, .5]);
+      groupLab.operations = prepareGroupOperations(entry);
+      groupLab.wire = null;
+      renderGroupMetadata(entry);
+      renderGroupOperationTypes();
+      updateGroupSeedInputs();
+      buildGroupOrbit();
+      resetView();
+    }
+
+    function renderGroupOperationTypes() {
+      const select = el('group-operation-type');
+      const kinds = Object.entries(groupTypes).filter(([kind]) => groupLab.operations.some(op => op.kind === kind));
+      select.replaceChildren(new Option('全部操作', 'all'), ...kinds.map(([key, label]) => new Option(label, key)));
+      renderGroupOperations(true);
+    }
+
+    function renderGroupOperations(initial = false) {
+      const filter = el('group-operation-type').value;
+      const operations = groupLab.operations.filter(op => filter === 'all' || op.kind === filter);
+      const select = el('group-operation');
+      select.replaceChildren(...operations.map(op => new Option(
+        (op.index + 1) + ' · ' + groupTypes[op.kind] + ' · ' + operationTriplet(op), op.index)));
+      const next = initial ? operations.find(op => op.kind !== 'identity') :
+        operations.find(op => op.index === groupLab.operation?.index);
+      chooseGroupOperation(next ?? operations[0]);
+    }
+
+    function chooseGroupOperation(op) {
+      groupLab.operation = op;
+      el('group-operation').value = op.index;
+      const angle = ['rotation', 'screw', 'rotoinversion'].includes(op.kind) ? ' ' + angleLabel(op.angle) : '';
+      el('group-operation-name').textContent = groupTypes[op.kind] + angle;
+      el('group-operation-expression').textContent = '(' + operationTriplet(op) + ')';
+      el('group-operation-description').textContent = {
+        identity: '基点留在原位。',
+        translation: '沿平移矢量移动。',
+        rotation: '围绕图中的轴线转动。',
+        screw: '绕轴转动，同时沿轴平移。',
+        mirror: '关于图中的镜面反射。',
+        glide: '先关于镜面反射，再沿镜面平移。',
+        inversion: '经过反演中心移至对侧的等距位置。',
+        rotoinversion: '先绕轴转动，再通过反演中心反演。',
+      }[op.kind];
+      if (op.kind === 'screw' || op.kind === 'glide' || op.kind === 'translation') {
+        el('group-operation-description').textContent += ' 平移分量 ' + groupCoordinate(matVec(groupLab.inverse, op.slide));
+      }
+      refreshGroupTrace();
+      setGroupProgress(0);
+    }
+
+    function cellWire(size, columns) {
+      const edges = [];
+      const corners = [];
+      for (let x = 0; x <= size; x++) {
+        for (let y = 0; y <= size; y++) {
+          for (let z = 0; z <= size; z++) {
+            const point = [x, y, z];
+            const start = matVec(columns, point);
+            if (point.every(value => value === 0 || value === size)) corners.push(start);
+            for (const [i, coordinate] of point.entries()) {
+              if (coordinate < size) edges.push([start, matVec(columns, add(point, IDENTITY[i]))]);
+            }
+          }
+        }
+      }
+      return { edges, corners };
+    }
+
+    function buildGroupOrbit() {
+      const seed = groupLab.seeds[groupLab.kind];
+      const point = groupPointMode();
+      const positions = new Map();
+      for (const op of groupLab.operations) {
+        let coordinates = groupImage(op, seed);
+        if (!point) coordinates = coordinates.map(wrapGroupCoordinate);
+        const key = coordinates.map(value => Math.round(value * 1e8)).join(',');
+        if (!positions.has(key)) positions.set(key, { coordinates, operation: op.index });
+      }
+      groupLab.orbit = [...positions.values()];
+      const side = !point && groupLab.repeat ? 2 : 1;
+      groupLab.wire = cellWire(side, groupLab.columns);
+      groupLab.locations = [];
+      for (let a = 0; a < side; a++) {
+        for (let b = 0; b < side; b++) {
+          for (let c = 0; c < side; c++) {
+            for (const item of groupLab.orbit) {
+              const coordinates = add(item.coordinates, [a, b, c]);
+              groupLab.locations.push({ coordinates, position: matVec(groupLab.columns, coordinates) });
+            }
+          }
+        }
+      }
+      groupLab.sceneCenter = matVec(groupLab.columns, [side / 2, side / 2, side / 2]);
+      el('group-orbit-count').textContent = groupLab.orbit.length;
+      const label = side === 2 ? '2×2×2' : point ? '点群轨道' : '单晶胞';
+      el('group-extent').textContent = label;
+      refreshGroupTrace();
+      requestDraw();
+    }
+
+    function refreshGroupTrace() {
+      const seed = groupLab.seeds[groupLab.kind];
+      groupLab.source = matVec(groupLab.columns, seed);
+      const op = groupLab.operation;
+      const target = groupImage(op, seed);
+      const displayTarget = groupPointMode() ? target : target.map(wrapGroupCoordinate);
+      groupLab.target = matVec(groupLab.columns, target);
+      groupLab.equivalent = matVec(groupLab.columns, displayTarget);
+      el('group-seed-target').textContent = groupCoordinate(displayTarget);
+      groupLab.trace = Array.from({ length: 37 }, (_, i) => groupPose(i / 36));
+      if (!groupLab.wire || !groupLab.sceneCenter) return;
+      const center = groupLab.sceneCenter;
+      const radiusOf = point => norm(add(point, neg(center)));
+      groupLab.radius = Math.max(1e-8, ...groupLab.wire.corners.map(radiusOf), ...groupLab.trace.map(radiusOf),
+        ...groupLab.locations.map(item => radiusOf(item.position)));
+    }
+
+    function updateGroupSeedInputs(active = null) {
+      const seed = groupLab.seeds[groupLab.kind];
+      for (const [i, input] of groupInputs.entries()) {
+        if (input !== active) input.value = probeNumber(seed[i]);
+        input.removeAttribute('aria-invalid');
+      }
+      el('group-seed-error').hidden = true;
+    }
+
+    function renderGroupProgress() {
+      const percent = Math.round(groupLab.progress * 100);
+      el('group-progress').value = percent;
+      el('group-percent').value = percent + '%';
+      el('group-play').textContent = groupLab.playing ? '暂停操作' : groupLab.progress === 1 ? '重播操作' : '播放操作';
+    }
+
+    function setGroupProgress(progress) {
+      groupLab.progress = progress;
+      groupLab.playing = false;
+      groupLab.lastTime = null;
+      renderGroupProgress();
+      requestDraw();
+    }
+
+    function advanceGroupProgress(time) {
+      if (!groupLab.playing) return;
+      if (groupLab.lastTime !== null) {
+        groupLab.progress = Math.min(1, groupLab.progress + Math.min(time - groupLab.lastTime, 80) / 1700);
+        groupLab.playing = groupLab.progress !== 1;
+      }
+      groupLab.lastTime = time;
+      renderGroupProgress();
+      if (groupLab.playing) requestDraw();
+    }
+
+    function drawGroupGuide() {
+      const {axis, center, kind} = groupLab.operation;
+      const extent = groupLab.radius * .76;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = '#7449af8f';
+      ctx.lineWidth = 1.5;
+      if (axis && (kind === 'mirror' || kind === 'glide')) {
+        const u = unit(cross(axis, Math.abs(axis[2]) > .9 ? X : Z));
+        const v = cross(axis, u);
+        const rim = Array.from({length: 32}, (_, i) => {
+          const theta = i * Math.PI / 16;
+          return project(add(center, mul(add(mul(u, Math.cos(theta)), mul(v, Math.sin(theta))), extent * .8)));
+        });
+        drawPath(rim, true);
+        ctx.fillStyle = '#b7a2fb30';
+        ctx.fill();
+        ctx.stroke();
+      } else if (axis) {
+        const ends = [project(add(center, mul(axis, -extent))), project(add(center, mul(axis, extent)))];
+        drawPath(ends);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      if (groupPointMode() || kind === 'inversion' || kind === 'rotoinversion') {
+        const marker = project(groupPointMode() ? groupLab.center : center);
+        markPoint(marker, 3.6, '#faf6ff', '#6145ab');
+        tagPoint(marker, 'O', '#6145ab', 8, 9);
+      }
+    }
+
+    function drawGroupScene(time) {
+      advanceGroupProgress(time);
+      const pivot = groupLab.sceneCenter;
+      const radius = groupLab.radius;
+      const frameScale = state.perspective ? .325 : .38;
+      view = {
+        x: width / 2 + state.pan[0], y: height / 2 + state.pan[1], pivot,
+        scale: Math.min(width, height) * frameScale * state.zoom / radius, distance: radius * 4,
+      };
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#3869b776';
+      ctx.lineWidth = 1.15;
+      for (const edge of groupLab.wire.edges) {
+        drawPath(edge.map(project));
+        ctx.stroke();
+      }
+      drawGroupGuide();
+      const baseRadius = groupLab.locations.length > 256 ? 2.5 : groupLab.locations.length > 48 ? 3.5 : 5.2;
+      groupLab.projected = groupLab.locations.map(point => ({ ...point, ...project(point.position) }))
+        .sort((a, b) => a.z - b.z);
+      for (const point of groupLab.projected) {
+        const radius = clamp(baseRadius * Math.sqrt(state.zoom) * point.perspective, 1.7, 9);
+        ctx.globalAlpha = .62 + .38 * clamp((point.z / groupLab.radius + 1) / 2, 0, 1);
+        markPoint(point, radius, '#6f50bb', '#fbf7ff');
+      }
+      ctx.globalAlpha = 1;
+      const source = project(groupLab.source);
+      const target = project(groupLab.target);
+      const current = project(groupPose(groupLab.progress));
+      const folded = project(groupLab.equivalent);
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = '#087f76b6';
+      ctx.lineWidth = 1.7;
+      drawPath(groupLab.trace.map(project));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (norm(add(groupLab.target, neg(groupLab.equivalent))) > 1e-8) {
+        markPoint(folded, 6, '#fff9ed', '#ad581b');
+        if (Math.hypot(folded.x - target.x, folded.y - target.y) > 28) tagPoint(folded, '折回位置', '#a04c17', 8, -8);
+      }
+      markPoint(target, 5.5, '#ffefd9', '#af5e21');
+      markPoint(source, 7, '#09796e', '#fff');
+      if (Math.hypot(current.x - source.x, current.y - source.y) > 12) markPoint(current, 5.5, '#be671c', '#fff');
+      if (Math.hypot(target.x - source.x, target.y - source.y) > 12) {
+        tagPoint(target, 'P′', '#a04c17', 9, -8);
+        tagPoint(source, 'P', '#095c53', -9, -8);
+      } else tagPoint(source, 'P', '#095c53', 9, -8);
+      screenPoints = [];
+      probeHandle.hidden = true;
+    }
+
+    function groupHover(x, y) {
+      if (state.spin || groupLab.playing) return;
+      const target = groupLab.projected.findLast(point => Math.hypot(point.x - x, point.y - y) < 9);
+      if (!target) {
+        hideTooltip();
+        return;
+      }
+      const coords = document.createElement('code');
+      coords.textContent = groupCoordinate(target.coordinates);
+      tooltip.replaceChildren('等价位置 · 分数坐标', document.createElement('br'), coords);
+      tooltip.hidden = false;
+      tooltip.style.left = clamp(x + 13, 3, width - tooltip.offsetWidth - 3) + 'px';
+      tooltip.style.top = clamp(y - tooltip.offsetHeight - 8, 40, height - tooltip.offsetHeight - 3) + 'px';
+    }
+
+    function rememberView() {
+      const {zoom, axis, pan, perspective, spin} = state;
+      return { camera, zoom, axis, pan, perspective, spin, label: el('view-label').textContent };
+    }
+
+    function restoreView(saved) {
+      camera = saved.camera;
+      state.zoom = saved.zoom;
+      state.axis = saved.axis;
+      state.pan = saved.pan;
+      state.perspective = saved.perspective;
+      el('projection').textContent = saved.perspective ? '透视投影' : '正交投影';
+      setSpin(saved.spin);
+      updateViewLabel(saved.label);
+    }
+
+    function syncCatalogNavigation() {
+      const groups = groupLab.active;
+      const systems = !groups && modelWorkspace.mode === 'system';
+      const lattices = !groups && !systems;
+      el('system-workspace').setAttribute('aria-pressed', systems);
+      el('lattice-workspace').setAttribute('aria-pressed', lattices);
+      el('group-workspace').setAttribute('aria-pressed', groups);
+      el('system-library').hidden = !systems;
+      el('lattice-library').hidden = !lattices;
+      el('group-library').hidden = !groups;
+    }
+
+    function syncModelDisplayInputs() {
+      for (const [i, axis] of SYMBOLS.slice(0, 3).entries()) el('repeat-' + axis).value = state.repeat[i];
+      for (const input of document.querySelectorAll('[data-display]')) input.checked = state.display[input.dataset.display];
+    }
+
+    function selectModelWorkspace(mode) {
+      if (groupLab.active) toggleGroupWorkspace(false);
+      if (modelWorkspace.mode === mode) return;
+      const {lattice, free, rh, params, repeat, display} = state;
+      const representative = system().lattices[0][0];
+      modelWorkspace.saved.set(modelWorkspace.mode, {
+        model: { lattice, free, rh, params: params.slice(), repeat: repeat.slice(), display: { ...display } },
+        fitExtent, view: rememberView(), selected: new Set(pointEdit.selected),
+      });
+      modelWorkspace.mode = mode;
+      const saved = modelWorkspace.saved.get(mode);
+      state.axis = null;
+      pointEdit.gesture = null;
+      if (saved) {
+        Object.assign(state, saved.model, { repeat: saved.model.repeat.slice(), display: { ...saved.model.display } });
+        applyParams(saved.model.params);
+        fitExtent = saved.fitExtent;
+        pointEdit.selected = new Set(saved.selected);
+        updateEditReadouts();
+        syncModelSelection();
+        restoreView(saved.view);
+      } else {
+        state.repeat = [1, 1, 1];
+        state.display = { points: true, edges: true, faces: true, axes: true };
+        selectLattice(mode === 'system' ? representative : 'cF', true);
+      }
+      syncModelDisplayInputs();
+      syncCatalogNavigation();
+      updateInteractionMode();
+      hideTooltip();
+      requestDraw();
+    }
+
+    function toggleGroupWorkspace(active) {
+      if (groupLab.active === active) return;
+      if (active) {
+        groupLab.bookmark = rememberView();
+        if (symmetry.playing) seekSymmetry(symmetry.progress);
+        pointEdit.gesture = null;
+      } else {
+        setGroupProgress(groupLab.progress);
+      }
+      groupLab.active = active;
+      setSpin(false);
+      syncCatalogNavigation();
+      for (const id of ['group-panel', 'group-timeline', 'group-legend', 'group-stats', 'group-jump']) el(id).hidden = !active;
+      for (const id of ['lattice-actions', 'lattice-stats']) el(id).hidden = active;
+      const showSymmetry = !active && symmetry.active;
+      const showEditing = !active && pointEdit.active;
+      for (const id of ['symmetry-panel', 'symmetry-timeline', 'symmetry-legend', 'element-view-label']) el(id).hidden = !showSymmetry;
+      for (const id of ['edit-panel', 'edit-toolbar', 'edit-legend']) el(id).hidden = !showEditing;
+      el('symmetry-markers').hidden = !showSymmetry || !symmetry.element;
+      el('scene').classList.toggle('group-active', active);
+      el('scene').classList.toggle('symmetry-active', showSymmetry);
+      el('scene').classList.toggle('edit-active', showEditing);
+      updateInteractionMode();
+      if (active) setGroupKind(groupLab.kind);
+      else {
+        updateHeading();
+        restoreView(groupLab.bookmark);
+      }
+      hideTooltip();
+      requestDraw();
+    }
+
+    for (const [i, family] of SYSTEMS.entries()) el('group-system-filter').add(new Option(family.name, i));
+    for (const button of document.querySelectorAll('[data-group-mode]')) {
+      button.addEventListener('click', () => setGroupKind(button.dataset.groupMode));
+    }
+    el('group-workspace').addEventListener('click', () => toggleGroupWorkspace(true));
+    el('lattice-workspace').addEventListener('click', () => selectModelWorkspace('lattice'));
+    el('system-workspace').addEventListener('click', () => selectModelWorkspace('system'));
+    el('group-search').addEventListener('input', () => renderGroupCatalog());
+    el('group-system-filter').addEventListener('change', () => renderGroupCatalog());
+    el('group-open-point').addEventListener('click', () => setGroupKind('point', pointDirectory[groupLab.current.pointIndex].id));
+    el('group-operation-type').addEventListener('change', () => renderGroupOperations());
+    el('group-operation').addEventListener('change', event => chooseGroupOperation(groupLab.operations[Number(event.target.value)]));
+    el('group-repeat').addEventListener('change', event => {
+      groupLab.repeat = event.target.checked;
+      buildGroupOrbit();
+    });
+    function setGroupSeed(coords, active = null) {
+      if (!coords.every(Number.isFinite) || !Number.isFinite(norm(matVec(groupLab.columns, coords)) * 8)) return false;
+      groupLab.seeds[groupLab.kind] = coords;
+      updateGroupSeedInputs(active);
+      buildGroupOrbit();
+      setGroupProgress(groupLab.progress);
+      return true;
+    }
+    for (const [i, input] of groupInputs.entries()) {
+      input.addEventListener('input', () => {
+        const coords = groupLab.seeds[groupLab.kind].slice();
+        coords[i] = input.valueAsNumber;
+        if (setGroupSeed(coords, input)) return;
+        input.setAttribute('aria-invalid', 'true');
+        el('group-seed-error').hidden = false;
+      });
+      input.addEventListener('focus', () => { input.value = String(groupLab.seeds[groupLab.kind][i]); });
+      input.addEventListener('blur', () => updateGroupSeedInputs());
+    }
+    el('group-seed-reset').addEventListener('click', () => setGroupSeed(groupDefaults[groupLab.kind].slice()));
+    el('group-play').addEventListener('click', () => {
+      if (groupLab.playing) {
+        setGroupProgress(groupLab.progress);
+        return;
+      }
+      if (groupLab.progress === 1) groupLab.progress = 0;
+      groupLab.playing = true;
+      groupLab.lastTime = null;
+      hideTooltip();
+      renderGroupProgress();
+      requestDraw();
+    });
+    el('group-progress').addEventListener('input', event => setGroupProgress(event.target.valueAsNumber / 100));
+    el('group-rewind').addEventListener('click', () => setGroupProgress(0));
+
+    selectLattice(state.lattice);
+    new ResizeObserver(resize).observe(canvas);
+    resize();
+  </script>
+</body>
+</html>
