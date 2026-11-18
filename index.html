@@ -106,6 +106,23 @@
     }
     .view-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #276bea; box-shadow: 0 0 0 2px #dce9ff; }
     .viewport-top button { pointer-events: auto; }
+    .rotation-pad {
+      position: absolute; top: 49px; right: 13px; display: grid; gap: 3px;
+      grid-template-areas: '. up .' 'left . right' '. down .';
+      grid-template-columns: repeat(3, 26px);
+      grid-template-rows: repeat(3, 26px);
+      pointer-events: none;
+    }
+    .rotation-pad button {
+      min-height: 0; padding: 0; pointer-events: auto; background: #fbfdffec;
+      font: 750 15px var(--mono); touch-action: none; user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .rotation-pad button[data-rotating] { background: #e3eeff; color: #174ebd; border-color: #94b5ed; }
+    .rotation-pad [data-camera-turn="ArrowUp"] { grid-area: up; }
+    .rotation-pad [data-camera-turn="ArrowLeft"] { grid-area: left; }
+    .rotation-pad [data-camera-turn="ArrowRight"] { grid-area: right; }
+    .rotation-pad [data-camera-turn="ArrowDown"] { grid-area: down; }
     .legend {
       position: absolute; right: 12px; bottom: 12px; display: flex; gap: 11px; align-items: center;
       font-size: 10px; color: #395772; border-radius: 7px; padding: 7px 8px;
@@ -122,6 +139,8 @@
     .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 12px 14px 9px; }
     .toolbar .axis-button { min-width: 43px; }
     .toolbar button[aria-pressed="true"] { color: #1248b6; background: #e9f1ff; border-color: #a8c3fd; }
+    .toolbar .element-view[aria-pressed="true"] { color: #552eab; background: #eee6ff; border-color: #b29ae9; }
+    .toolbar #operation-view:disabled { opacity: .5; }
     .toolbar .reset { margin-left: auto; }
     .gestures { padding: 0 14px 12px; color: var(--muted); font-size: 11px; line-height: 1.6; }
     .stats { display: grid; grid-template-columns: 1.2fr 1fr 1fr; border-top: 1px solid var(--line); background: #fafcff; margin: 0; }
@@ -247,6 +266,8 @@
     .group-operation-output { display: block; margin-block: 4px; font: 700 12px var(--mono); overflow-wrap: anywhere; }
     .group-option { display: block; font-size: 11px; color: var(--muted); margin-top: 8px; }
     .group-option input { vertical-align: middle; accent-color: #6947c9; margin-left: 0; }
+    .translation-presets { display: flex; gap: 5px; margin-top: 8px; }
+    .translation-presets button { min-width: 36px; }
     .timeline {
       display: grid; grid-template-columns: auto minmax(40px, 1fr) 39px auto;
       gap: 9px; align-items: center; padding: 10px 14px; background: #faf8ff; border-bottom: 1px solid #e5def2;
@@ -410,6 +431,7 @@
         <div class="scene-actions" id="lattice-actions">
           <button type="button" class="symmetry-toggle edit-toggle" id="edit-toggle" aria-controls="edit-panel" aria-pressed="false">拖点变形</button>
           <button type="button" class="symmetry-toggle" id="symmetry-toggle" aria-controls="symmetry-panel" aria-pressed="false">点对称演示</button>
+          <button type="button" class="symmetry-toggle" id="translation-toggle" aria-controls="group-panel" aria-pressed="false">平移演示</button>
         </div>
       </div>
       <div class="viewport" id="viewport">
@@ -426,6 +448,12 @@
             <a class="view-button symmetry-jump group-jump" id="group-jump" href="#group-panel" hidden>选操作 ↓</a>
             <button type="button" id="projection" class="view-button" title="切换正交与透视投影">正交投影</button>
           </div>
+        </div>
+        <div class="rotation-pad" role="group" aria-label="绕中心旋转模型，单击 15 度，长按每秒 90 度">
+          <button type="button" class="view-button" data-camera-turn="ArrowUp" aria-label="向上旋转" title="向上旋转 · 单击 15° · 长按 90°/秒">↑</button>
+          <button type="button" class="view-button" data-camera-turn="ArrowLeft" aria-label="向左旋转" title="向左旋转 · 单击 15° · 长按 90°/秒">←</button>
+          <button type="button" class="view-button" data-camera-turn="ArrowRight" aria-label="向右旋转" title="向右旋转 · 单击 15° · 长按 90°/秒">→</button>
+          <button type="button" class="view-button" data-camera-turn="ArrowDown" aria-label="向下旋转" title="向下旋转 · 单击 15° · 长按 90°/秒">↓</button>
         </div>
         <div class="legend" id="legend">
           <span><i></i>顶点</span><span id="center-legend"><i class="center-dot"></i><span id="center-label">面心</span></span>
@@ -464,6 +492,8 @@
         <button type="button" class="axis-button" data-axis="0" aria-pressed="false">沿 a</button>
         <button type="button" class="axis-button" data-axis="1" aria-pressed="false">沿 b</button>
         <button type="button" class="axis-button" data-axis="2" aria-pressed="false">沿 c</button>
+        <button type="button" id="operation-view" class="element-view" aria-pressed="false" hidden disabled>沿操作素</button>
+        <button type="button" id="plane-front-view" class="element-view" aria-pressed="false" title="沿平面法线观察" hidden>正对平面</button>
         <button type="button" id="spin" aria-pressed="false">自动旋转</button>
         <button type="button" id="reset-view" class="reset">复位视图</button>
       </div>
@@ -601,14 +631,31 @@
         <div><h2 id="group-heading">空间群</h2><p id="group-panel-detail"></p></div>
         <a class="view-button symmetry-jump group-jump" href="#viewport">看演示 ↑</a>
       </div>
-      <section class="settings-section" aria-label="对称群信息">
+      <section class="settings-section" id="group-metadata-section" aria-label="对称群信息">
         <dl class="group-metadata" id="group-metadata"></dl>
         <button type="button" class="text-button group-link" id="group-open-point">查看对应点群</button>
       </section>
       <section class="settings-section" aria-label="对称操作">
         <div class="symmetry-fields group-operation">
-          <label>操作类型 <select class="setting-select" id="group-operation-type"></select></label>
-          <label>对称操作 <select class="setting-select" id="group-operation"></select></label>
+          <label id="group-operation-filter">操作类型 <select class="setting-select" id="group-operation-type"></select></label>
+          <label id="group-operation-picker">对称操作 <select class="setting-select" id="group-operation"></select></label>
+        </div>
+        <div id="translation-fields" hidden>
+          <h3 class="section-title">平移矢量 <span aria-hidden="true">u a + v b + w c</span></h3>
+          <div class="probe-fields">
+            <div class="parameter"><label for="translation-u"><b>u</b><span>沿 a</span></label><input type="number" step="1" id="translation-u"></div>
+            <div class="parameter"><label for="translation-v"><b>v</b><span>沿 b</span></label><input type="number" step="1" id="translation-v"></div>
+            <div class="parameter"><label for="translation-w"><b>w</b><span>沿 c</span></label><input type="number" step="1" id="translation-w"></div>
+          </div>
+          <div class="translation-presets" role="group" aria-label="平移方向预设">
+            <button class="text-button" type="button" data-translation="0">+a</button>
+            <button class="text-button" type="button" data-translation="1">+b</button>
+            <button class="text-button" type="button" data-translation="2">+c</button>
+          </div>
+          <label class="group-option" id="translation-centering-label">附加格心平移
+            <select class="setting-select" id="translation-centering"></select>
+          </label>
+          <p class="error" id="translation-error" role="status" hidden>请输入整数个晶格周期。</p>
         </div>
         <div class="operation-info">
           <strong id="group-operation-name"></strong>
@@ -627,6 +674,7 @@
           <div class="parameter"><label for="group-z"><b>z</b></label><input type="number" step="any" id="group-z"></div>
         </div>
         <p class="error" id="group-seed-error" role="status" hidden>请输入有效的有限坐标。</p>
+        <p class="probe-result" id="translation-target-row" hidden>实际终点 P′ <code id="translation-target"></code></p>
         <p class="probe-result"><span id="group-seed-output-label"></span> <code id="group-seed-target"></code></p>
         <label class="group-option" id="group-repeat-label"><input type="checkbox" id="group-repeat">显示 2×2×2 晶胞</label>
         <p class="symmetry-note" id="group-orbit-note"></p>
@@ -709,6 +757,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     const SYMBOLS = ['a', 'b', 'c', 'α', 'β', 'γ'];
     const AXIS_COLORS = ['#a53e32', '#177969', '#244f9b'];
     const DEFAULT_EYE = [5.6, -8, 5.1];
+    const AXIAL_OPERATIONS = new Set(['rotation', 'rotoinversion', 'screw']);
+    const PLANAR_OPERATIONS = new Set(['mirror', 'glide']);
     const RAD = Math.PI / 180;
     const el = id => document.getElementById(id);
     const latticeMap = new Map();
@@ -1140,6 +1190,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         return isLatticeSite(result, shifts);
       }).length;
       el('symmetry-match').textContent = matches + ' / ' + mesh.points.length;
+      syncOperationView();
       seekSymmetry(0);
     }
 
@@ -1208,6 +1259,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       setSpin(false);
       seekSymmetry(0);
       if (active) refreshSymmetry();
+      else syncOperationView();
     }
 
     function updateInteractionMode() {
@@ -1498,7 +1550,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       state.rh = 'primitive';
       applyParams(defaults());
       syncModelSelection();
-      resetView();
+      if (groupLatticeMode()) {
+        groupLab.bookmark = null;
+        loadLatticeTranslation();
+      } else resetView();
     }
 
     for (const definition of SYSTEMS.slice().reverse()) {
@@ -1611,27 +1666,84 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       const extent = Math.log(basis.scale) + Math.log(radius);
       mesh = { points, byKey: vertex, edges, faces, panels, normals, radius, extent, origin: xyz([0, 0, 0]), moved: 0 };
       attachPointEdits();
-      if (state.axis !== null) pointAlong(state.axis);
+      if (Number.isInteger(state.axis)) pointAlong(state.axis);
       refreshSymmetry();
       hideTooltip();
       requestDraw();
     }
 
-    function look(eye) {
+    function look(eye, up = null) {
       const toward = unit(eye);
-      const worldUp = Math.abs(toward[2]) > .96 ? [0, 1, 0] : [0, 0, 1];
+      const worldUp = up ?? (Math.abs(toward[2]) > .96 ? [0, 1, 0] : [0, 0, 1]);
       const right = unit(cross(worldUp, toward));
       camera = [right, cross(toward, right), toward];
     }
 
     function pointAlong(axis) {
       state.axis = axis;
+      if (groupLab.active) groupLab.orbitPivot = null;
       look((groupLab.active ? groupLab.basis : basis).vectors[axis]);
       updateViewLabel();
     }
 
+    function viewedOperationElement() {
+      const group = groupLab.active;
+      const op = group ? groupLab.operation : symmetry.active ? symmetry.operation : null;
+      if (!op || op.kind === 'identity') return null;
+      const center = group ? op.center : symmetry.pivot.position;
+      const direction = group ? op.axis : op.worldAxis;
+      if (AXIAL_OPERATIONS.has(op.kind)) {
+        const label = op.kind === 'screw' ? '沿螺旋轴观察' :
+          op.kind === 'rotoinversion' ? '沿旋转反演轴观察' : '沿对称轴观察';
+        return { shape: 'line', center, direction, label };
+      }
+      if (PLANAR_OPERATIONS.has(op.kind)) {
+        return { shape: 'plane', center, normal: direction, label: op.kind === 'glide' ? '沿滑移面观察' : '沿镜面观察' };
+      }
+      if (op.kind === 'inversion') return { shape: 'point', center, label: '反演中心居中' };
+      if (op.kind === 'translation' && norm(op.slide) > 1e-8) {
+        return { shape: 'line', center: groupLab.source, direction: unit(op.slide), label: '沿平移方向观察' };
+      }
+      return null;
+    }
+
+    function isElementView(axis = state.axis) {
+      return axis === 'operation' || axis === 'plane-front';
+    }
+
+    function syncOperationView() {
+      const button = el('operation-view');
+      const element = viewedOperationElement();
+      button.hidden = !symmetry.active && !groupLab.active;
+      button.disabled = !element;
+      button.title = element?.label ?? '恒等操作';
+      el('plane-front-view').hidden = element?.shape !== 'plane';
+      if (!isElementView()) return;
+      if (!element) state.axis = null;
+      else {
+        if (state.axis === 'plane-front' && element.shape !== 'plane') state.axis = 'operation';
+        if (element.shape === 'line') {
+          look(element.direction);
+        } else if (element.shape === 'plane') {
+          const {normal} = element;
+          if (state.axis === 'plane-front') look(normal);
+          else {
+            const tangent = add(camera[2], mul(normal, -dot(camera[2], normal)));
+            const edgeDirection = norm(tangent) > 1e-8 ? tangent : cross(normal, Math.abs(normal[2]) > .9 ? X : Z);
+            look(edgeDirection, normal);
+          }
+        }
+      }
+      updateViewLabel();
+    }
+
     function updateViewLabel(label = '自由视角') {
-      el('view-label').textContent = state.axis === null ? label : '沿 ' + SYMBOLS[state.axis] + ' 轴观察';
+      const aligned = isElementView();
+      const viewLabel = state.axis === 'plane-front' ? '正对平面观察' : viewedOperationElement()?.label;
+      el('view-label').textContent = aligned ? viewLabel ?? label :
+        state.axis === null ? label : '沿 ' + SYMBOLS[state.axis] + ' 轴观察';
+      el('operation-view').setAttribute('aria-pressed', state.axis === 'operation');
+      el('plane-front-view').setAttribute('aria-pressed', state.axis === 'plane-front');
       for (const button of document.querySelectorAll('[data-axis]')) {
         button.setAttribute('aria-pressed', Number(button.dataset.axis) === state.axis);
       }
@@ -1645,7 +1757,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       if (!groupLab.active) {
         fitExtent = mesh.extent + Math.log(displayMesh.radius / mesh.radius);
         if (symmetry.active) symmetry.probeFit = norm(symmetry.probe);
-      }
+      } else groupLab.orbitPivot = null;
       look(DEFAULT_EYE);
       updateViewLabel('斜视');
       hideTooltip();
@@ -1809,6 +1921,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     function draw(time) {
       queuedFrame = 0;
       if (!mesh || !ctx) return;
+      advanceCameraTurn(time);
       advanceSymmetry(time);
       if (state.spin) {
         if (lastTime) orbit(Math.min(time - lastTime, 50) * .00055, 0);
@@ -2153,6 +2266,85 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     }
 
     const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    const CAMERA_TAP_ANGLE = 15 * RAD;
+    const CAMERA_ANGULAR_SPEED = 90 * RAD / 1000;
+    let cameraTurn = null;
+
+    function prepareCameraTurn() {
+      if (groupLab.active && isElementView()) groupLab.orbitPivot = groupViewPivot();
+      setSpin(false);
+      hideTooltip();
+    }
+
+    function applyCameraTurn(turn, angle) {
+      const delta = angle - turn.angle;
+      if (delta <= 0) return;
+      // Rotate the foreground toward the arrow while keeping the view center fixed.
+      orbit(...mul(turn.direction, -delta));
+      if (turn.angle === 0) updateViewLabel();
+      turn.angle = angle;
+    }
+
+    function startCameraTurn(button, trigger, time) {
+      prepareCameraTurn();
+      cameraTurn = { button, trigger, time, angle: 0, direction: arrows[button.dataset.cameraTurn] };
+      button.setAttribute('data-rotating', '');
+      requestDraw();
+    }
+
+    function advanceCameraTurn(time) {
+      if (!cameraTurn) return;
+      applyCameraTurn(cameraTurn, (time - cameraTurn.time) * CAMERA_ANGULAR_SPEED);
+      requestDraw();
+    }
+
+    function endCameraTurn(time = null) {
+      if (!cameraTurn) return;
+      const turn = cameraTurn;
+      cameraTurn = null;
+      if (time !== null) applyCameraTurn(turn, Math.max(CAMERA_TAP_ANGLE, (time - turn.time) * CAMERA_ANGULAR_SPEED));
+      turn.button.removeAttribute('data-rotating');
+      requestDraw();
+    }
+
+    for (const button of document.querySelectorAll('[data-camera-turn]')) {
+      button.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || cameraTurn) return;
+        button.setPointerCapture(event.pointerId);
+        startCameraTurn(button, event.pointerId, event.timeStamp);
+      });
+      button.addEventListener('pointerup', event => {
+        if (cameraTurn?.button === button && cameraTurn.trigger === event.pointerId) endCameraTurn(event.timeStamp);
+      });
+      for (const type of ['pointercancel', 'lostpointercapture']) {
+        button.addEventListener(type, event => {
+          if (cameraTurn?.button === button && cameraTurn.trigger === event.pointerId) endCameraTurn();
+        });
+      }
+      button.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        if (!event.repeat && !cameraTurn) startCameraTurn(button, event.key, event.timeStamp);
+      });
+      button.addEventListener('keyup', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        if (cameraTurn?.button === button && cameraTurn.trigger === event.key) endCameraTurn(event.timeStamp);
+      });
+      button.addEventListener('blur', () => {
+        if (cameraTurn?.button === button && typeof cameraTurn.trigger === 'string') endCameraTurn();
+      });
+      button.addEventListener('click', event => {
+        if (event.detail > 0 || event.pointerType || cameraTurn) return;
+        prepareCameraTurn();
+        applyCameraTurn({ direction: arrows[button.dataset.cameraTurn], angle: 0 }, CAMERA_TAP_ANGLE);
+        requestDraw();
+      });
+    }
+    window.addEventListener('blur', () => endCameraTurn());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) endCameraTurn();
+    });
     probeHandle.addEventListener('pointerdown', event => {
       if (event.button !== 0 || probeDrag || pointers.size) return;
       event.preventDefault();
@@ -2282,6 +2474,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         requestDraw();
       });
     }
+    function selectElementView(mode) {
+      const element = viewedOperationElement();
+      if (!element || (mode === 'plane-front' && element.shape !== 'plane')) return;
+      setSpin(false);
+      state.axis = mode;
+      state.pan = [0, 0];
+      if (groupLab.active) groupLab.orbitPivot = null;
+      syncOperationView();
+      hideTooltip();
+      requestDraw();
+    }
+    el('operation-view').addEventListener('click', () => selectElementView('operation'));
+    el('plane-front-view').addEventListener('click', () => selectElementView('plane-front'));
     for (const [i, axis] of SYMBOLS.slice(0, 3).entries()) {
       const input = el('repeat-' + axis);
       input.addEventListener('input', () => {
@@ -2410,13 +2615,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         id, symbol, full, short, hallNumber, hallSymbol, setting, pointIndex, encoded,
         systemIndex: pointDirectory[pointIndex].systemIndex,
       }));
-    const groupDefaults = { point: [.713, .637, .783], space: [.137, .241, .367] };
+    const groupDefaults = { point: [.713, .637, .783], space: [.137, .241, .367], lattice: [0, 0, 0] };
     const groupLab = {
       active: false, kind: 'space', selected: { point: 'm-3m', space: 4 },
-      seeds: { point: groupDefaults.point.slice(), space: groupDefaults.space.slice() },
+      seeds: { point: groupDefaults.point.slice(), space: groupDefaults.space.slice(), lattice: groupDefaults.lattice.slice() },
       current: null, operations: [], operation: null, basis: null, repeat: false,
       progress: 0, playing: false, lastTime: null, bookmark: null,
-      orbit: [], locations: [], projected: [], trace: [],
+      orbit: [], locations: [], projected: [], trace: [], orbitPivot: null,
+      directoryKind: 'space', translation: [1, 0, 0], centering: '0,0,0',
     };
     const groupInputs = ['group-x', 'group-y', 'group-z'].map(el);
     const groupTypes = {
@@ -2425,6 +2631,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     };
     const groupSubscripts = '₀₁₂₃₄₅₆₇₈₉';
     const groupPointMode = () => groupLab.kind === 'point';
+    const groupLatticeMode = () => groupLab.active && groupLab.kind === 'lattice';
+    const translationInputs = ['translation-u', 'translation-v', 'translation-w'].map(el);
     const entrySymbol = entry => entry.symbol.replace(/_(\d)/g, (_, digit) => groupSubscripts[Number(digit)])
       .replace(/-(\d)/g, '$1̅');
     const normalizeSymbol = value => value.toLowerCase()
@@ -2468,8 +2676,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         }
         const numerator = operation.twelfths[i];
         if (numerator) {
-          const factor = [12, 6, 4, 3, 2, 1].find(divisor => numerator % divisor === 0);
-          expression += (expression ? '+' : '') + numerator / factor + '/' + 12 / factor;
+          const magnitude = Math.abs(numerator);
+          const factor = [12, 6, 4, 3, 2, 1].find(divisor => magnitude % divisor === 0);
+          const suffix = factor === 12 ? '' : '/' + 12 / factor;
+          expression += (numerator < 0 ? '−' : expression ? '+' : '') + magnitude / factor + suffix;
         }
         return expression || '0';
       });
@@ -2641,6 +2851,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
     function renderGroupMetadata(entry) {
       const point = groupPointMode();
+      el('group-metadata-section').hidden = false;
       const fields = point ? [['晶系', SYSTEMS[entry.systemIndex].name], ['点群阶数', entry.ops.length]] :
         [['完整符号', entrySymbol({symbol: entry.full})],
           ['对应点群', pointDirectory[entry.pointIndex].label],
@@ -2672,19 +2883,45 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       el('group-order').textContent = groupLab.operations.length;
     }
 
+    function setGroupBasis(geometry) {
+      groupLab.basis = geometry;
+      groupLab.columns = transpose(geometry.vectors);
+      groupLab.inverse = reciprocalRows(geometry.vectors);
+      groupLab.center = matVec(groupLab.columns, [.5, .5, .5]);
+      groupLab.wire = null;
+    }
+
     function loadGroup(entry) {
       groupLab.current = entry;
       groupLab.selected[groupLab.kind] = entry.id;
       const systemIndex = entry.systemIndex;
       const setting = !groupPointMode() && systemIndex === 4 ? SYSTEMS[5] : SYSTEMS[systemIndex];
-      groupLab.basis = cellBasis(setting.values);
-      groupLab.columns = transpose(groupLab.basis.vectors);
-      groupLab.inverse = reciprocalRows(groupLab.basis.vectors);
-      groupLab.center = matVec(groupLab.columns, [.5, .5, .5]);
+      setGroupBasis(cellBasis(setting.values));
       groupLab.operations = prepareGroupOperations(entry);
-      groupLab.wire = null;
       renderGroupMetadata(entry);
       renderGroupOperationTypes();
+      updateGroupSeedInputs();
+      buildGroupOrbit();
+      resetView();
+    }
+
+    function loadLatticeTranslation() {
+      setGroupBasis(basis);
+      groupLab.operations = latticeShifts().map((translation, index) => ({
+        index, rotation: IDENTITY, translation,
+        kind: index === 0 ? 'identity' : 'translation',
+        twelfths: translation.map(value => Math.round(value * 12)),
+      }));
+      syncModelSelection();
+      el('model-detail').textContent += ' · 晶格平移';
+      el('group-metadata-section').hidden = true;
+      el('group-repeat-label').hidden = false;
+      el('group-heading').textContent = '晶格平移';
+      el('group-panel-detail').textContent = latticeMap.get(state.lattice).name;
+      el('group-seed-output-label').textContent = '终点折回晶胞';
+      el('group-order-label').textContent = '每晶胞等效格点';
+      el('group-order').textContent = groupLab.operations.length;
+      renderGroupOperations();
       updateGroupSeedInputs();
       buildGroupOrbit();
       resetView();
@@ -2693,12 +2930,29 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     function renderGroupOperationTypes() {
       const select = el('group-operation-type');
       const kinds = Object.entries(groupTypes).filter(([kind]) => groupLab.operations.some(op => op.kind === kind));
-      select.replaceChildren(new Option('全部操作', 'all'), ...kinds.map(([key, label]) => new Option(label, key)));
+      const options = kinds.map(([key, label]) => new Option(key === 'translation' ? '格心平移' : label, key));
+      if (!groupPointMode()) options.push(new Option('晶格平移', 'lattice-translation'));
+      select.replaceChildren(new Option('全部操作', 'all'), ...options);
       renderGroupOperations(true);
     }
 
     function renderGroupOperations(initial = false) {
       const filter = el('group-operation-type').value;
+      const lattice = groupLatticeMode();
+      const customTranslation = lattice || filter === 'lattice-translation';
+      el('group-operation-filter').hidden = lattice;
+      el('group-operation-picker').hidden = customTranslation;
+      el('translation-fields').hidden = !customTranslation;
+      el('translation-target-row').hidden = !customTranslation;
+      if (customTranslation) {
+        el('group-orbit-note').textContent = '橙色格点随动画移动，虚线晶胞标出终点。折回晶胞后可比较等价位置。';
+        renderTranslationInputs();
+        applyTranslation();
+        return;
+      }
+      if (!groupPointMode()) {
+        el('group-orbit-note').textContent = '等价位置按周期折回晶胞。动画展示所选操作的实际位移，终点可能落在相邻晶胞。';
+      }
       const operations = groupLab.operations.filter(op => filter === 'all' || op.kind === filter);
       const select = el('group-operation');
       select.replaceChildren(...operations.map(op => new Option(
@@ -2708,11 +2962,42 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       chooseGroupOperation(next ?? operations[0]);
     }
 
+    function syncTranslationInputs(active = null) {
+      for (const [i, input] of translationInputs.entries()) {
+        if (input !== active) input.value = groupLab.translation[i];
+        input.removeAttribute('aria-invalid');
+      }
+      el('translation-error').hidden = true;
+    }
+
+    function renderTranslationInputs() {
+      const shifts = groupLab.operations.filter(op => op.kind === 'identity' || op.kind === 'translation');
+      const select = el('translation-centering');
+      select.replaceChildren(...shifts.map(op => new Option(
+        op.kind === 'identity' ? '无附加平移' : groupCoordinate(op.translation), op.twelfths.join(','))));
+      select.value = groupLab.centering;
+      if (!select.value) select.value = groupLab.centering = '0,0,0';
+      el('translation-centering-label').hidden = shifts.length < 2;
+      syncTranslationInputs();
+    }
+
+    function applyTranslation() {
+      const centering = groupLab.centering.split(',').map(Number);
+      const twelfths = add(mul(groupLab.translation, 12), centering);
+      const translation = mul(twelfths, 1 / 12);
+      const slide = matVec(groupLab.columns, translation);
+      chooseGroupOperation({
+        index: -1, kind: 'translation', customTranslation: true, rotation: IDENTITY, translation, twelfths,
+        slide, axis: null, center: [0, 0, 0],
+      });
+    }
+
     function chooseGroupOperation(op) {
       groupLab.operation = op;
+      groupLab.orbitPivot = null;
       el('group-operation').value = op.index;
       const angle = ['rotation', 'screw', 'rotoinversion'].includes(op.kind) ? ' ' + angleLabel(op.angle) : '';
-      el('group-operation-name').textContent = groupTypes[op.kind] + angle;
+      el('group-operation-name').textContent = op.customTranslation ? '晶格平移' : groupTypes[op.kind] + angle;
       el('group-operation-expression').textContent = '(' + operationTriplet(op) + ')';
       el('group-operation-description').textContent = {
         identity: '基点留在原位。',
@@ -2728,6 +3013,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         el('group-operation-description').textContent += ' 平移分量 ' + groupCoordinate(matVec(groupLab.inverse, op.slide));
       }
       refreshGroupTrace();
+      syncOperationView();
       setGroupProgress(0);
     }
 
@@ -2750,6 +3036,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     }
 
     function buildGroupOrbit() {
+      groupLab.orbitPivot = null;
       const seed = groupLab.seeds[groupLab.kind];
       const point = groupPointMode();
       const positions = new Map();
@@ -2763,11 +3050,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       const side = !point && groupLab.repeat ? 2 : 1;
       groupLab.wire = cellWire(side, groupLab.columns);
       groupLab.locations = [];
-      for (let a = 0; a < side; a++) {
-        for (let b = 0; b < side; b++) {
-          for (let c = 0; c < side; c++) {
+      const showBoundary = groupLatticeMode();
+      const limit = showBoundary ? side + 1 : side;
+      for (let a = 0; a < limit; a++) {
+        for (let b = 0; b < limit; b++) {
+          for (let c = 0; c < limit; c++) {
             for (const item of groupLab.orbit) {
               const coordinates = add(item.coordinates, [a, b, c]);
+              if (showBoundary && coordinates.some(value => value > side)) continue;
               groupLab.locations.push({ coordinates, position: matVec(groupLab.columns, coordinates) });
             }
           }
@@ -2790,12 +3080,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       groupLab.target = matVec(groupLab.columns, target);
       groupLab.equivalent = matVec(groupLab.columns, displayTarget);
       el('group-seed-target').textContent = groupCoordinate(displayTarget);
+      if (op.customTranslation) el('translation-target').textContent = groupCoordinate(target);
       groupLab.trace = Array.from({ length: 37 }, (_, i) => groupPose(i / 36));
       if (!groupLab.wire || !groupLab.sceneCenter) return;
-      const center = groupLab.sceneCenter;
+      const center = op.customTranslation ? add(groupLab.sceneCenter, mul(op.slide, .5)) : groupLab.sceneCenter;
+      groupLab.framingCenter = center;
       const radiusOf = point => norm(add(point, neg(center)));
-      groupLab.radius = Math.max(1e-8, ...groupLab.wire.corners.map(radiusOf), ...groupLab.trace.map(radiusOf),
-        ...groupLab.locations.map(item => radiusOf(item.position)));
+      const vertices = [...groupLab.wire.corners, ...groupLab.locations.map(item => item.position)];
+      const endpoints = op.customTranslation ? vertices.map(point => add(point, op.slide)) : [];
+      groupLab.radius = Math.max(1e-8, ...vertices.map(radiusOf), ...endpoints.map(radiusOf), ...groupLab.trace.map(radiusOf));
     }
 
     function updateGroupSeedInputs(active = null) {
@@ -2839,21 +3132,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       ctx.setLineDash([5, 4]);
       ctx.strokeStyle = '#7449af8f';
       ctx.lineWidth = 1.5;
-      if (axis && (kind === 'mirror' || kind === 'glide')) {
+      if (axis && PLANAR_OPERATIONS.has(kind)) {
+        const planeCenter = isElementView() ? view.pivot : center;
         const u = unit(cross(axis, Math.abs(axis[2]) > .9 ? X : Z));
         const v = cross(axis, u);
         const rim = Array.from({length: 32}, (_, i) => {
           const theta = i * Math.PI / 16;
-          return project(add(center, mul(add(mul(u, Math.cos(theta)), mul(v, Math.sin(theta))), extent * .8)));
+          return project(add(planeCenter, mul(add(mul(u, Math.cos(theta)), mul(v, Math.sin(theta))), extent * .8)));
         });
         drawPath(rim, true);
         ctx.fillStyle = '#b7a2fb30';
         ctx.fill();
         ctx.stroke();
+        if (state.axis === 'operation') {
+          const rightEdge = rim.reduce((right, point) => point.x > right.x ? point : right);
+          tagPoint(rightEdge, kind === 'glide' ? '滑移面' : '镜面', '#6145ab', -8, -10);
+        }
       } else if (axis) {
         const ends = [project(add(center, mul(axis, -extent))), project(add(center, mul(axis, extent)))];
-        drawPath(ends);
-        ctx.stroke();
+        if (state.axis === 'operation') {
+          const marker = project(center);
+          ctx.setLineDash([]);
+          markPoint(marker, 5, '#faf6ff', '#6145ab');
+          tagPoint(marker, kind === 'screw' ? '螺旋轴' : '对称轴', '#6145ab', 8, -9);
+        } else {
+          drawPath(ends);
+          ctx.stroke();
+        }
       }
       ctx.setLineDash([]);
       if (groupPointMode() || kind === 'inversion' || kind === 'rotoinversion') {
@@ -2863,10 +3168,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       }
     }
 
+    function groupViewPivot() {
+      const center = groupLab.framingCenter;
+      if (!isElementView()) return groupLab.orbitPivot ?? center;
+      const element = viewedOperationElement();
+      const delta = add(element.center, neg(center));
+      if (element.shape === 'line') return add(center, add(delta, mul(element.direction, -dot(delta, element.direction))));
+      if (element.shape === 'plane') return add(center, mul(element.normal, dot(delta, element.normal)));
+      return element.center;
+    }
+
     function drawGroupScene(time) {
       advanceGroupProgress(time);
-      const pivot = groupLab.sceneCenter;
-      const radius = groupLab.radius;
+      const pivot = groupViewPivot();
+      const radius = groupLab.radius + norm(add(pivot, neg(groupLab.framingCenter)));
       const frameScale = state.perspective ? .325 : .38;
       view = {
         x: width / 2 + state.pan[0], y: height / 2 + state.pan[1], pivot,
@@ -2889,6 +3204,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         markPoint(point, radius, '#6f50bb', '#fbf7ff');
       }
       ctx.globalAlpha = 1;
+      if (groupLab.operation.customTranslation) drawTranslatedLattice(baseRadius);
       const source = project(groupLab.source);
       const target = project(groupLab.target);
       const current = project(groupPose(groupLab.progress));
@@ -2912,6 +3228,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       } else tagPoint(source, 'P', '#095c53', 9, -8);
       screenPoints = [];
       probeHandle.hidden = true;
+    }
+
+    function drawTranslatedLattice(baseRadius) {
+      const vector = groupLab.operation.slide;
+      if (norm(vector) < 1e-8) return;
+      ctx.strokeStyle = '#ad571eb3';
+      ctx.lineWidth = 1.3;
+      ctx.setLineDash([5, 4]);
+      for (const edge of groupLab.wire.edges) {
+        drawPath(edge.map(point => project(add(point, vector))));
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      const progress = groupLab.progress;
+      if (progress <= 0) return;
+      const offset = mul(vector, progress);
+      const points = groupLab.locations.map(item => project(add(item.position, offset))).sort((a, b) => a.z - b.z);
+      for (const point of points) {
+        const radius = clamp(baseRadius * Math.sqrt(state.zoom) * point.perspective, 1.7, 8);
+        markPoint(point, radius, '#ca7428', '#fff7e8');
+      }
     }
 
     function groupHover(x, y) {
@@ -2942,11 +3279,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       state.perspective = saved.perspective;
       el('projection').textContent = saved.perspective ? '透视投影' : '正交投影';
       setSpin(saved.spin);
-      updateViewLabel(saved.label);
+      syncOperationView();
+      updateViewLabel(isElementView(saved.axis) ? '自由视角' : saved.label);
     }
 
     function syncCatalogNavigation() {
-      const groups = groupLab.active;
+      const groups = groupLab.active && !groupLatticeMode();
       const systems = !groups && modelWorkspace.mode === 'system';
       const lattices = !groups && !systems;
       el('system-workspace').setAttribute('aria-pressed', systems);
@@ -2995,20 +3333,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       requestDraw();
     }
 
-    function toggleGroupWorkspace(active) {
-      if (groupLab.active === active) return;
-      if (active) {
+    function toggleGroupWorkspace(active, latticeTranslation = false) {
+      const wasLatticeTranslation = groupLatticeMode();
+      if (groupLab.active === active && (!active || wasLatticeTranslation === latticeTranslation)) return;
+      if (active && !groupLab.active) {
         groupLab.bookmark = rememberView();
         if (symmetry.playing) seekSymmetry(symmetry.progress);
         pointEdit.gesture = null;
-      } else {
+      } else if (!active) {
         setGroupProgress(groupLab.progress);
+      }
+      if (latticeTranslation && !wasLatticeTranslation) {
+        groupLab.directoryKind = groupLab.kind;
+        groupLab.kind = 'lattice';
+      } else if (wasLatticeTranslation && !latticeTranslation) {
+        groupLab.kind = groupLab.directoryKind;
       }
       groupLab.active = active;
       setSpin(false);
       syncCatalogNavigation();
       for (const id of ['group-panel', 'group-timeline', 'group-legend', 'group-stats', 'group-jump']) el(id).hidden = !active;
-      for (const id of ['lattice-actions', 'lattice-stats']) el(id).hidden = active;
+      el('lattice-stats').hidden = active;
+      el('lattice-actions').hidden = active && !latticeTranslation;
+      el('edit-toggle').hidden = active;
+      el('symmetry-toggle').hidden = active;
+      el('translation-toggle').setAttribute('aria-pressed', latticeTranslation);
+      el('translation-toggle').textContent = latticeTranslation ? '退出平移' : '平移演示';
       const showSymmetry = !active && symmetry.active;
       const showEditing = !active && pointEdit.active;
       for (const id of ['symmetry-panel', 'symmetry-timeline', 'symmetry-legend', 'element-view-label']) el(id).hidden = !showSymmetry;
@@ -3018,10 +3368,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       el('scene').classList.toggle('symmetry-active', showSymmetry);
       el('scene').classList.toggle('edit-active', showEditing);
       updateInteractionMode();
-      if (active) setGroupKind(groupLab.kind);
+      if (latticeTranslation) loadLatticeTranslation();
+      else if (active) setGroupKind(groupLab.kind);
       else {
         updateHeading();
-        restoreView(groupLab.bookmark);
+        if (groupLab.bookmark) restoreView(groupLab.bookmark);
+        else resetView();
       }
       hideTooltip();
       requestDraw();
@@ -3034,11 +3386,42 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     el('group-workspace').addEventListener('click', () => toggleGroupWorkspace(true));
     el('lattice-workspace').addEventListener('click', () => selectModelWorkspace('lattice'));
     el('system-workspace').addEventListener('click', () => selectModelWorkspace('system'));
+    el('translation-toggle').addEventListener('click', () => {
+      if (groupLatticeMode()) toggleGroupWorkspace(false);
+      else toggleGroupWorkspace(true, true);
+    });
     el('group-search').addEventListener('input', () => renderGroupCatalog());
     el('group-system-filter').addEventListener('change', () => renderGroupCatalog());
     el('group-open-point').addEventListener('click', () => setGroupKind('point', pointDirectory[groupLab.current.pointIndex].id));
     el('group-operation-type').addEventListener('change', () => renderGroupOperations());
     el('group-operation').addEventListener('change', event => chooseGroupOperation(groupLab.operations[Number(event.target.value)]));
+    for (const [i, input] of translationInputs.entries()) {
+      input.addEventListener('input', () => {
+        const value = input.valueAsNumber;
+        if (!Number.isSafeInteger(value * 12) || !Number.isInteger(value) || Math.abs(value) >= Number.MAX_SAFE_INTEGER / 12 - 1) {
+          input.setAttribute('aria-invalid', 'true');
+          el('translation-error').hidden = false;
+          return;
+        }
+        groupLab.translation[i] = value;
+        syncTranslationInputs(input);
+        applyTranslation();
+      });
+      input.addEventListener('blur', () => syncTranslationInputs());
+    }
+    for (const button of document.querySelectorAll('[data-translation]')) {
+      button.addEventListener('click', () => {
+        groupLab.translation = IDENTITY[Number(button.dataset.translation)].slice();
+        groupLab.centering = '0,0,0';
+        el('translation-centering').value = groupLab.centering;
+        syncTranslationInputs();
+        applyTranslation();
+      });
+    }
+    el('translation-centering').addEventListener('change', event => {
+      groupLab.centering = event.target.value;
+      applyTranslation();
+    });
     el('group-repeat').addEventListener('change', event => {
       groupLab.repeat = event.target.checked;
       buildGroupOrbit();
