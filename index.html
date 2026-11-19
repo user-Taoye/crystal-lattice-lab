@@ -108,7 +108,7 @@
     .viewport-top button { pointer-events: auto; }
     .rotation-pad {
       position: absolute; top: 49px; right: 13px; display: grid; gap: 3px;
-      grid-template-areas: '. up .' 'left . right' '. down .';
+      grid-template-areas: 'ccw up cw' 'left . right' '. down .';
       grid-template-columns: repeat(3, 26px);
       grid-template-rows: repeat(3, 26px);
       pointer-events: none;
@@ -123,6 +123,8 @@
     .rotation-pad [data-camera-turn="ArrowLeft"] { grid-area: left; }
     .rotation-pad [data-camera-turn="ArrowRight"] { grid-area: right; }
     .rotation-pad [data-camera-turn="ArrowDown"] { grid-area: down; }
+    .rotation-pad [data-camera-turn="RollCCW"] { grid-area: ccw; }
+    .rotation-pad [data-camera-turn="RollCW"] { grid-area: cw; }
     .legend {
       position: absolute; right: 12px; bottom: 12px; display: flex; gap: 11px; align-items: center;
       font-size: 10px; color: #395772; border-radius: 7px; padding: 7px 8px;
@@ -449,11 +451,13 @@
             <button type="button" id="projection" class="view-button" title="切换正交与透视投影">正交投影</button>
           </div>
         </div>
-        <div class="rotation-pad" role="group" aria-label="绕中心旋转模型，单击 15 度，长按每秒 90 度">
-          <button type="button" class="view-button" data-camera-turn="ArrowUp" aria-label="向上旋转" title="向上旋转 · 单击 15° · 长按 90°/秒">↑</button>
-          <button type="button" class="view-button" data-camera-turn="ArrowLeft" aria-label="向左旋转" title="向左旋转 · 单击 15° · 长按 90°/秒">←</button>
-          <button type="button" class="view-button" data-camera-turn="ArrowRight" aria-label="向右旋转" title="向右旋转 · 单击 15° · 长按 90°/秒">→</button>
-          <button type="button" class="view-button" data-camera-turn="ArrowDown" aria-label="向下旋转" title="向下旋转 · 单击 15° · 长按 90°/秒">↓</button>
+        <div class="rotation-pad" role="group" aria-label="绕中心三轴旋转模型，点按 5 度，长按每秒 90 度，松开时靠近正位自动对齐">
+          <button type="button" class="view-button" data-camera-turn="RollCCW" aria-label="绕视线逆时针旋转" title="绕视线逆时针旋转 · 点按 5° · 长按 90°/秒 · 接近正位松开对齐">↺</button>
+          <button type="button" class="view-button" data-camera-turn="ArrowUp" aria-label="向上旋转" title="向上旋转 · 点按 5° · 长按 90°/秒 · 接近正位松开对齐">↑</button>
+          <button type="button" class="view-button" data-camera-turn="RollCW" aria-label="绕视线顺时针旋转" title="绕视线顺时针旋转 · 点按 5° · 长按 90°/秒 · 接近正位松开对齐">↻</button>
+          <button type="button" class="view-button" data-camera-turn="ArrowLeft" aria-label="向左旋转" title="向左旋转 · 点按 5° · 长按 90°/秒 · 接近正位松开对齐">←</button>
+          <button type="button" class="view-button" data-camera-turn="ArrowRight" aria-label="向右旋转" title="向右旋转 · 点按 5° · 长按 90°/秒 · 接近正位松开对齐">→</button>
+          <button type="button" class="view-button" data-camera-turn="ArrowDown" aria-label="向下旋转" title="向下旋转 · 点按 5° · 长按 90°/秒 · 接近正位松开对齐">↓</button>
         </div>
         <div class="legend" id="legend">
           <span><i></i>顶点</span><span id="center-legend"><i class="center-dot"></i><span id="center-label">面心</span></span>
@@ -2266,7 +2270,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     }
 
     const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-    const CAMERA_TAP_ANGLE = 15 * RAD;
+    const CAMERA_TAP_ANGLE = 5 * RAD;
+    const CAMERA_TAP_TIME = 160;
+    const CAMERA_SNAP_ANGLE = 2.5 * RAD;
     const CAMERA_ANGULAR_SPEED = 90 * RAD / 1000;
     let cameraTurn = null;
 
@@ -2276,25 +2282,72 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       hideTooltip();
     }
 
+    function rollCamera(angle) {
+      const [right, up, forward] = camera;
+      const rolledRight = unit(add(mul(right, Math.cos(angle)), mul(up, Math.sin(angle))));
+      camera = [rolledRight, unit(cross(forward, rolledRight)), forward];
+    }
+
+    function snapCameraTurn(direction) {
+      const axes = (groupLab.active ? groupLab.basis : basis).vectors.map(unit);
+      if (arrows[direction]) {
+        const normals = axes.map((_, i) => unit(cross(axes[(i + 1) % 3], axes[(i + 2) % 3])));
+        let closest = Math.cos(CAMERA_SNAP_ANGLE);
+        let target = null;
+        for (const candidate of [...axes, ...normals]) {
+          const alignment = dot(candidate, camera[2]);
+          if (Math.abs(alignment) > closest) {
+            closest = Math.abs(alignment);
+            target = alignment > 0 ? candidate : neg(candidate);
+          }
+        }
+        if (!target) return;
+        look(target, camera[1]);
+      }
+
+      // Level a visible cell edge without changing the viewing direction.
+      let correction = null;
+      for (const axis of axes) {
+        const x = dot(axis, camera[0]), y = dot(axis, camera[1]);
+        if (Math.hypot(x, y) < .25) continue;
+        const angle = Math.atan2(y, x);
+        const offset = angle - Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
+        if (Math.abs(offset) <= CAMERA_SNAP_ANGLE && (correction === null || Math.abs(offset) < Math.abs(correction))) {
+          correction = offset;
+        }
+      }
+      if (correction !== null) rollCamera(correction);
+    }
+
+    function heldTurnAngle(elapsed) {
+      return CAMERA_TAP_ANGLE + Math.max(0, elapsed - CAMERA_TAP_TIME) * CAMERA_ANGULAR_SPEED;
+    }
+
     function applyCameraTurn(turn, angle) {
       const delta = angle - turn.angle;
       if (delta <= 0) return;
-      // Rotate the foreground toward the arrow while keeping the view center fixed.
-      orbit(...mul(turn.direction, -delta));
+      const movement = arrows[turn.direction];
+      if (movement) {
+        orbit(...mul(movement, -delta));
+      } else {
+        const roll = turn.direction === 'RollCW' ? delta : -delta;
+        rollCamera(roll);
+        state.axis = null;
+      }
       if (turn.angle === 0) updateViewLabel();
       turn.angle = angle;
     }
 
     function startCameraTurn(button, trigger, time) {
       prepareCameraTurn();
-      cameraTurn = { button, trigger, time, angle: 0, direction: arrows[button.dataset.cameraTurn] };
+      cameraTurn = { button, trigger, time, angle: 0, direction: button.dataset.cameraTurn };
       button.setAttribute('data-rotating', '');
       requestDraw();
     }
 
     function advanceCameraTurn(time) {
       if (!cameraTurn) return;
-      applyCameraTurn(cameraTurn, (time - cameraTurn.time) * CAMERA_ANGULAR_SPEED);
+      applyCameraTurn(cameraTurn, heldTurnAngle(time - cameraTurn.time));
       requestDraw();
     }
 
@@ -2302,7 +2355,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       if (!cameraTurn) return;
       const turn = cameraTurn;
       cameraTurn = null;
-      if (time !== null) applyCameraTurn(turn, Math.max(CAMERA_TAP_ANGLE, (time - turn.time) * CAMERA_ANGULAR_SPEED));
+      if (time !== null) {
+        applyCameraTurn(turn, heldTurnAngle(time - turn.time));
+        snapCameraTurn(turn.direction);
+      }
       turn.button.removeAttribute('data-rotating');
       requestDraw();
     }
@@ -2337,7 +2393,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       button.addEventListener('click', event => {
         if (event.detail > 0 || event.pointerType || cameraTurn) return;
         prepareCameraTurn();
-        applyCameraTurn({ direction: arrows[button.dataset.cameraTurn], angle: 0 }, CAMERA_TAP_ANGLE);
+        applyCameraTurn({ direction: button.dataset.cameraTurn, angle: 0 }, CAMERA_TAP_ANGLE);
+        snapCameraTurn(button.dataset.cameraTurn);
         requestDraw();
       });
     }
